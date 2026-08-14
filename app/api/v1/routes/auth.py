@@ -47,6 +47,3 @@ def logout():
     return {}
 
 
-@router.get("/me")
-async def session_verify():
-   return {}
