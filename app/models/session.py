@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from .base import BaseModel
@@ -25,12 +25,22 @@ class SessionModel(BaseModel):
         nullable=False,
     )
 
-    expires_at = Column(
+    access_expires_at = Column(
         DateTime(timezone=True),
         nullable=False,
     )
 
-    revoked_at = Column(
+    refresh_expires_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+
+    access_revoked_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    refresh_revoked_at = Column(
         DateTime(timezone=True),
         nullable=True,
     )
