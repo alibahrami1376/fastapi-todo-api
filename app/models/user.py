@@ -77,3 +77,8 @@ class UserModel(PasswordMixin, UsernameMixin, BaseModel):
         "TodoModel",
         back_populates="owner",
     )
+
+    sessions = relationship(
+    "SessionModel",
+    back_populates="user",
+    )
