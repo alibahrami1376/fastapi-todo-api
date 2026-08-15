@@ -1,17 +1,21 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends
 
-from core.database import get_db
-from core.config import settings
+from dependencies.auth import get_current_user
+from models import UserModel
+from schemas import UserResponseSchema
+
 
 router = APIRouter(
-    prefix="/users",    
+    prefix="/users",
     tags=["users"],
 )
 
 
-
-@router.get("/me")
-async def session_verify():
-   return {}
+@router.get(
+    "/me",
+    response_model=UserResponseSchema,
+)
+def get_me(
+    current_user: UserModel = Depends(get_current_user),
+):
+    return current_user
