@@ -102,3 +102,8 @@ class RegisterResponseSchema(BaseModel):
     user_id: int
     email: EmailStr
     detail: str
+
+class RefreshTokenResponseSchema(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
