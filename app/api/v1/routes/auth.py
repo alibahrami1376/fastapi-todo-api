@@ -1,19 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, status
+from fastapi.security import HTTPAuthorizationCredentials
 
-from core.database import get_db
-from core.config import settings
-# from models.users import UserModel
-# from repositories.user_repository import UserRepository
-# from services.account_service import AccountService
-# from schemas.accounts import (
-#     RegisterRequestSchema,
-#     LoginRequestSchema,
-#     LoginResponseSchema,
-# )
-# from libs.auth.jwt_cookie_auth import get_authenticated_user
-# from messages.accounts import Messages
+from dependencies.auth import get_auth_service
+from schemas import (
+    LoginRequestSchema,
+    LoginResponseSchema,
+    RegisterRequestSchema,
+    RefreshTokenResponseSchema
+)
+from dependencies.auth import security
+from services.auth_service import AuthService
 
 
 router = APIRouter(
@@ -22,28 +18,45 @@ router = APIRouter(
 )
 
 
-# def get_account_service(db: Session = Depends(get_db)) -> AccountService:
-#     user_repo = UserRepository(db)
-#     return AccountService(user_repo)
+
+@router.post(
+    "/register",
+    status_code=status.HTTP_201_CREATED,
+)
+def register(
+    request: RegisterRequestSchema,
+    service: AuthService = Depends(get_auth_service),
+):
+    return service.register(request)
 
 
-@router.post("/register", status_code=status.HTTP_201_CREATED)
-async def register():
-    return {}
+@router.post(
+    "/login",
+    response_model=LoginResponseSchema,
+)
+def login(
+    request: LoginRequestSchema,
+    service: AuthService = Depends(get_auth_service),
+):
+    return service.login(request)
 
 
-@router.post("/login")
-async def login():
-    return {}
-
-
-@router.post("/refresh-token")
-async def refresh_token():
-    return 
+@router.post(
+        "/refresh-token",
+        response_model=RefreshTokenResponseSchema
+)
+def refresh_token(
+    service: AuthService = Depends(get_auth_service),
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    return service.refresh_access_token(credentials.credentials) 
 
 
 @router.post("/logout")
-def logout():
-    return {}
-
+def logout(
+    service: AuthService = Depends(get_auth_service),
+    credentials: HTTPAuthorizationCredentials = Depends(security)    
+):
+    
+    return service.logout(credentials.credentials)
 
