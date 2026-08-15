@@ -1,4 +1,4 @@
-from .todo import  TodoModel
+from .task import  TaskModel
 from .user import UserModel
-from .todo import PriorityTypes
+from .task import PriorityTypes
 from .session import SessionModel

@@ -13,8 +13,8 @@ class PriorityTypes(str, Enum):
     HIGH = "high"
 
 
-class TodoModel(BaseModel):
-    __tablename__ = "todos"
+class TaskModel(BaseModel):
+    __tablename__ = "tasks"
 
     title = Column(
         String,
@@ -50,5 +50,5 @@ class TodoModel(BaseModel):
 
     owner = relationship(
         "UserModel",
-        back_populates="todos",
+        back_populates="tasks",
     )
