@@ -10,7 +10,8 @@ from pydantic import (
 )
 
 from core.exceptions import CustomValidationException
-from messages.auth import Messages
+from messages import AuthMessages
+
 
 
 class RegisterRequestSchema(BaseModel):
@@ -41,22 +42,22 @@ class RegisterRequestSchema(BaseModel):
 
         if not re.search(r"[A-Z]", value):
             raise CustomValidationException(
-                Messages.password_one_uppercase
+                AuthMessages.password_one_uppercase
             )
 
         if not re.search(r"[a-z]", value):
             raise CustomValidationException(
-                Messages.password_one_lowercase
+                AuthMessages.password_one_lowercase
             )
 
         if not re.search(r"\d", value):
             raise CustomValidationException(
-                Messages.password_one_digit
+                AuthMessages.password_one_digit
             )
 
         if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", value):
             raise CustomValidationException(
-                Messages.password_special_char
+                AuthMessages.password_special_char
             )
 
         return value
@@ -67,7 +68,7 @@ class RegisterRequestSchema(BaseModel):
 
         if self.password != self.confirm_password:
             raise CustomValidationException(
-                Messages.passwords_do_not_match
+                AuthMessages.passwords_do_not_match
             )
 
         return self
