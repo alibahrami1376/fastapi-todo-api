@@ -73,8 +73,8 @@ class UserModel(PasswordMixin, UsernameMixin, BaseModel):
         default=False,
     )
 
-    todos = relationship(
-        "TodoModel",
+    tasks = relationship(
+        "TaskModel",
         back_populates="owner",
     )
 
