@@ -1,15 +1,15 @@
-from .auth import (
+from app.schemas.auth import (
     RegisterRequestSchema,
     RegisterResponseSchema,
     LoginRequestSchema,
     LoginResponseSchema,
     RefreshTokenResponseSchema
 )
-from .user import (
+from app.schemas.user import (
     UserResponseSchema,
     UserUpdateSchema
 )
-from .task import (
+from app.schemas.task import (
     TaskCreateSchema,
     TaskUpdateSchema,
     TaskResponseSchema,
