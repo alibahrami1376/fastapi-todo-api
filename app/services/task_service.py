@@ -11,7 +11,7 @@ class TaskService:
     def __init__(self, task_repo: TaskRepository):
         self.task_repo = task_repo
 
-    def create_task(
+    async def create_task(
         self,
         user_id: int,
         task: TaskCreateSchema,
@@ -31,7 +31,7 @@ class TaskService:
                 detail=TaskMessages.TASK_CREATION_FAILED,
             )
 
-    def get_tasks(
+    async def get_tasks(
         self,
         user_id: int,
         params: TaskQuerySchema,
@@ -58,7 +58,7 @@ class TaskService:
                 detail=TaskMessages.TASK_FETCHING_FAILED,
             )
         
-    def get_task(
+    async def get_task(
         self,
         user_id: int,
         task_id: int,
@@ -85,7 +85,7 @@ class TaskService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=TaskMessages.TASK_FETCHING_FAILED,
             )
-    def update_task(
+    async def update_task(
         self,
         user_id: int,
         task_id: int,
@@ -119,7 +119,7 @@ class TaskService:
                 detail=TaskMessages.TASK_UPDATE_FAILED,
             )
 
-    def partial_update_task(
+    async def partial_update_task(
         self,
         user_id: int,
         task_id: int,
@@ -155,7 +155,7 @@ class TaskService:
                 detail=TaskMessages.TASK_UPDATE_FAILED,
             )
 
-    def delete_task(
+    async def delete_task(
         self,
         user_id: int,
         task_id: int,

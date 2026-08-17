@@ -10,11 +10,11 @@ class SessionRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def revoke_refresh_token(self, session: SessionModel) -> None:
+    async def revoke_refresh_token(self, session: SessionModel) -> None:
         session.refresh_revoked_at = datetime.now(timezone.utc)
         self.db.commit()
 
-    def create(
+    async def create(
         self,
         user_id: int,
         access_token_jti: str,
@@ -37,7 +37,7 @@ class SessionRepository:
 
         return session
 
-    def get_by_access_token_jti(
+    async def get_by_access_token_jti(
         self,
         jti: str,
     ) -> SessionModel | None:
@@ -47,7 +47,7 @@ class SessionRepository:
             .first()
         )
 
-    def get_by_refresh_token_jti(
+    async def get_by_refresh_token_jti(
         self,
         jti: str,
     ) -> SessionModel | None:
@@ -57,7 +57,7 @@ class SessionRepository:
             .first()
         )
 
-    def revoke_access_token(
+    async def revoke_access_token(
         self,
         session: SessionModel,
     ) -> None:

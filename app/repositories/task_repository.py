@@ -16,12 +16,12 @@ class TaskRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def _base_query(self) -> Query:
+    async def _base_query(self) -> Query:
         return self.db.query(TaskModel).filter(
             TaskModel.deleted_at.is_(None)
         )
 
-    def _apply_owner_filter(
+    async def _apply_owner_filter(
         self,
         query: Query,
         owner_id: int,
@@ -30,7 +30,7 @@ class TaskRepository:
             TaskModel.owner_id == owner_id
         )
 
-    def _apply_search(
+    async def _apply_search(
         self,
         query: Query,
         search: str | None,
@@ -47,7 +47,7 @@ class TaskRepository:
             )
         )
 
-    def _apply_filters(
+    async def _apply_filters(
         self,
         query: Query,
         params: TaskQuerySchema,
@@ -75,7 +75,7 @@ class TaskRepository:
 
         return query
 
-    def _apply_sorting(
+    async def _apply_sorting(
         self,
         query: Query,
         params: TaskQuerySchema,
@@ -96,7 +96,7 @@ class TaskRepository:
 
         return query.order_by(sort_column.desc())
 
-    def _apply_pagination(
+    async def _apply_pagination(
         self,
         query: Query,
         params: TaskQuerySchema,
@@ -108,7 +108,7 @@ class TaskRepository:
             params.page_size
         )
 
-    def get_tasks(
+    async def get_tasks(
         self,
         owner_id: int,
         params: TaskQuerySchema,
@@ -147,7 +147,7 @@ class TaskRepository:
 
         return tasks, total
 
-    def get_by_id(
+    async def get_by_id(
         self,
         task_id: int,
     ) -> TaskModel | None:
@@ -158,7 +158,7 @@ class TaskRepository:
             .first()
         )
 
-    def get_by_id_and_owner_id(
+    async def get_by_id_and_owner_id(
         self,
         task_id: int,
         owner_id: int,
@@ -173,7 +173,7 @@ class TaskRepository:
             .first()
         )
 
-    def create_task(
+    async def create_task(
         self,
         title: str,
         description: str | None,
@@ -196,7 +196,7 @@ class TaskRepository:
 
         return task
 
-    def update_task(
+    async def update_task(
         self,
         task: TaskModel,
     ) -> TaskModel:
@@ -206,7 +206,7 @@ class TaskRepository:
 
         return task
 
-    def delete_task(
+    async def delete_task(
         self,
         task: TaskModel,
     ) -> None:

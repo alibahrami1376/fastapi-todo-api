@@ -14,7 +14,7 @@ from schemas import LoginRequestSchema, RegisterRequestSchema
 
 class AuthService:
 
-    def __init__(
+    async def __init__(
         self,
         user_repo: UserRepository,
         session_repo: SessionRepository,
@@ -22,7 +22,7 @@ class AuthService:
         self.user_repo = user_repo
         self.session_repo = session_repo
 
-    def register(self, request: RegisterRequestSchema):
+    async def register(self, request: RegisterRequestSchema):
         existing_user = self.user_repo.get_by_email(request.email)
 
         if existing_user:
@@ -40,7 +40,7 @@ class AuthService:
             "detail": Messages.registered_successfully,
         }
 
-    def login(self, request: LoginRequestSchema):
+    async def login(self, request: LoginRequestSchema):
         user = self.user_repo.get_by_email(request.email)
 
         if not user or not user.verify_password(request.password):
@@ -71,7 +71,7 @@ class AuthService:
             "token_type": "bearer",
         }
 
-    def refresh_access_token(self, refresh_token: str):
+    async def refresh_access_token(self, refresh_token: str):
         payload = decode_refresh_token(refresh_token)
 
         user_id = int(payload["sub"])
@@ -119,7 +119,7 @@ class AuthService:
             "token_type": "bearer",
         }
 
-    def logout(self, access_token: str):
+    async def logout(self, access_token: str):
         payload = decode_access_token(access_token)
 
         access_jti = payload["jti"]
