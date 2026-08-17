@@ -3,76 +3,156 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from http import HTTPStatus
 
+class BaseAppException(Exception):
+    def __init__(
+        self,
+        code: str,
+        message: str,
+        status_code: int,
+    ):
+        self.code = code
+        self.message = message
+        self.status_code = status_code
 
-# === Custom Exception Classes ===
-class PermissionDenied(HTTPException):
-    def __init__(self, detail: str = "Permission Denied"):
-        super().__init__(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+        super().__init__(message)
 
+class TodoNotFoundException(BaseAppException):
+    def __init__(self):
+        super().__init__(
+            code="TODO_NOT_FOUND",
+            message="Todo not found",
+            status_code=404,
+        )
 
-class AuthenticationFailed(HTTPException):
-    def __init__(self, detail: str = "Authentication Failed"):
-        super().__init__(status_code=status.HTTP_401_UNAUTHORIZED, detail=detail)
+class PermissionDeniedException(BaseAppException):
+    def __init__(self):
+        super().__init__(
+            code="PERMISSION_DENIED",
+            message="Permission denied",
+            status_code=403,
+        )
 
+class InvalidSortFieldException(BaseAppException):
+    def __init__(self):
+        super().__init__(
+            code="INVALID_SORT_FIELD",
+            message="Invalid sort field",
+            status_code=400,
+        )
 
-class NotAuthenticated(HTTPException):
-    def __init__(self, detail: str = "Not Authenticated"):
-        super().__init__(status_code=status.HTTP_401_UNAUTHORIZED, detail=detail)
+class AuthenticationException(BaseAppException):
+    def __init__(self):
+        super().__init__(
+            code="AUTHENTICATION_ERROR",
+            message="Authentication failed",
+            status_code=401,
+        )
 
+async def app_exception_handler(
+    request: Request,
+    exc: BaseAppException,
+):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "success": False,
+            "error": {
+                "code": exc.code,
+                "message": exc.message,
+            },
+        },
+    )
+
+async def validation_exception_handler(
+    request: Request,
+    exc: RequestValidationError,
+):
+    errors = exc.errors()
+
+    for error in errors:
+        loc = error.get("loc", [])
+
+        if "sort_by" in loc:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "success": False,
+                    "error": {
+                        "code": "INVALID_SORT_FIELD",
+                        "message": "Invalid sort field",
+                    },
+                },
+            )
+
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "success": False,
+            "error": {
+                "code": "VALIDATION_ERROR",
+                "message": "Validation error",
+                "detail": errors,
+            },
+        },
+    )
+
+async def http_exception_handler(
+    request: Request,
+    exc: HTTPException,
+):
+    error_codes = {
+        400: "BAD_REQUEST",
+        401: "AUTHENTICATION_ERROR",
+        403: "PERMISSION_DENIED",
+        404: "NOT_FOUND",
+        405: "METHOD_NOT_ALLOWED",
+        409: "CONFLICT",
+        422: "VALIDATION_ERROR",
+    }
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "success": False,
+            "error": {
+                "code": error_codes.get(
+                    exc.status_code,
+                    "HTTP_ERROR",
+                ),
+                "message": str(exc.detail),
+            },
+        },
+    )
+
+async def validation_exception_handler( request: Request, exc: RequestValidationError, ):
+
+    return JSONResponse( 
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, 
+        content={ 
+            "success": False,
+            "error": { 
+                "code": "VALIDATION_ERROR", 
+                "message": "Validation failed", 
+                "details": exc.errors(), 
+            }, 
+        }, 
+    )
+
+async def unhandled_exception_handler( request: Request, exc: Exception, ): 
+    return JSONResponse( 
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+        content={
+            "success": False, 
+            "error": { 
+                "code": "INTERNAL_SERVER_ERROR", 
+                "message": "Internal server error", 
+            }, 
+        }, 
+    )
+
+# ------------------------
 
 class CustomValidationException(HTTPException):
-    def __init__(self, detail: str = "Error in validating data",status_code:int=status.HTTP_400_BAD_REQUEST):
-        super().__init__(status_code=status_code, detail=detail)
+     def __init__(self, detail: str = "Error in validating data",status_code:int=status.HTTP_400_BAD_REQUEST):
+         super().__init__(status_code=status_code, detail=detail)
 
-
-# === Exception Handlers ===
-async def custom_validation_exception_handler(request: Request, exc: CustomValidationException):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "error": {
-                "status_code": exc.status_code,
-                "message": HTTPStatus(exc.status_code).description,
-                "detail": exc.detail
-            }
-        }
-    )
-
-
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    return JSONResponse(
-        status_code=422,
-        content={
-            "error": {
-                "status_code": 422,
-                "message": HTTPStatus(422).description,
-                "detail": exc.errors()
-            }
-        }
-    )
-
-
-async def http_exception_handler(request: Request, exc: HTTPException):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "error": {
-                "status_code": exc.status_code,
-                "message": HTTPStatus(exc.status_code).description,
-                "detail": exc.detail
-            }
-        }
-    )
-
-
-async def unhandled_exception_handler(request: Request, exc: Exception):
-    return JSONResponse(
-        status_code=500,
-        content={
-            "error": {
-                "status_code": 500,
-                "message": "Internal Server Error",
-                "detail": str(exc)
-            }
-        }
-    )

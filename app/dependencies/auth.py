@@ -7,9 +7,9 @@ from core.security import decode_access_token
 from models import UserModel
 from repositories import SessionRepository, UserRepository
 from services.auth_service import AuthService
+from core.exceptions import AuthenticationException
 
-
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 def get_auth_service(
@@ -28,8 +28,11 @@ def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db),
 ) -> UserModel:
+    
+    if credentials is None: 
+        raise AuthenticationException()
+    
     token = credentials.credentials
-
     payload = decode_access_token(token)
 
     access_jti = payload["jti"]
@@ -41,17 +44,12 @@ def get_current_user(
     session = session_repo.get_by_access_token_jti(access_jti)
 
     if not session or session.access_revoked_at is not None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or revoked access token.",
-        )
+        raise AuthenticationException()
 
     user = user_repo.get_by_id(user_id)
 
     if not user or not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User is not active or does not exist.",
-        )
+        raise AuthenticationException()
 
     return user
+

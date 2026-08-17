@@ -6,7 +6,7 @@ from fastapi import HTTPException, status
 from jwt.exceptions import DecodeError, InvalidSignatureError
 
 from core.config import settings
-
+from core.exceptions import AuthenticationException
 
 def generate_access_token(user_id: int) -> tuple[str, str]:
     now = datetime.now(timezone.utc)
@@ -63,42 +63,29 @@ def decode_access_token(token: str) -> dict:
         )
 
         if decoded.get("type") != "access":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication failed, token type not valid",
-            )
+            raise AuthenticationException()
 
         if not decoded.get("sub"):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication failed, sub not in the payload",
-            )
+            raise AuthenticationException()
 
         if not decoded.get("jti"):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication failed, jti not in the payload",
-            )
+            raise AuthenticationException()
 
         return decoded
 
+    except AuthenticationException:
+        raise
+
     except InvalidSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication failed, invalid signature",
-        )
+        raise AuthenticationException()
 
     except DecodeError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication failed, decode failed",
-        )
+        raise AuthenticationException()
 
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Authentication failed, {exc}",
-        )
+    except Exception:
+        raise AuthenticationException()
+
+
 
     
 def decode_refresh_token(token: str) -> dict:

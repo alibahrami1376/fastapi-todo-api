@@ -4,7 +4,7 @@ from math import ceil
 from messages import TaskMessages
 from repositories import TaskRepository
 from schemas import TaskCreateSchema, TaskUpdateSchema,TaskQuerySchema
-
+from core.exceptions import TodoNotFoundException,PermissionDeniedException
 
 class TaskService:
 
@@ -64,20 +64,20 @@ class TaskService:
         task_id: int,
     ):
         try:
-            task = self.task_repo.get_by_id_and_owner_id(
-                task_id,
-                user_id,
-            )
+            task = self.task_repo.get_by_id(task_id)
 
             if not task:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=TaskMessages.TASK_NOT_FOUND,
-                )
+                raise TodoNotFoundException()
+
+            if task.owner_id != user_id:
+                raise PermissionDeniedException()
 
             return task
 
-        except HTTPException:
+        except (
+            TodoNotFoundException,
+            PermissionDeniedException,
+        ):
             raise
 
         except Exception:
@@ -85,7 +85,6 @@ class TaskService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=TaskMessages.TASK_FETCHING_FAILED,
             )
-
     def update_task(
         self,
         user_id: int,

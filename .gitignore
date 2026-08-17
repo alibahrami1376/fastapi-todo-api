@@ -218,3 +218,5 @@ __marimo__/
 .streamlit/secrets.toml
 
 todo_task.md
+PROJECT_REVIEW.md
+task.md
