@@ -15,7 +15,7 @@ router = APIRouter(
     "/me",
     response_model=UserResponseSchema,
 )
-def get_me(
+async def get_me(
     current_user: UserModel = Depends(get_current_user),
 ):
     return current_user

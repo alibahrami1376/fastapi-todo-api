@@ -1,6 +1,6 @@
 from faker import Faker
 
-from app.models import UserModel
+from models import UserModel
 
 DEFAULT_TEST_PASSWORD="Aa@123456"
 

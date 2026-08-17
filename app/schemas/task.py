@@ -1,25 +1,20 @@
+from datetime import date, datetime
 from enum import Enum
-from datetime import datetime, timezone,date
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator,model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from models import PriorityTypes
 
-def validate_due_date(value: datetime | None) -> datetime | None:
+
+def validate_due_date(value: date | None) -> date | None:
     if value is None:
         return None
 
-    if value.tzinfo is None or value.utcoffset() is None:
-        raise ValueError(
-            "Due date must include timezone information."
-        )
-
-    if value < datetime.now(timezone.utc):
-        raise ValueError(
-            "Due date cannot be in the past."
-        )
+    if value < date.today():
+        raise ValueError("Due date cannot be in the past.")
 
     return value
+
 
 class TaskCreateSchema(BaseModel):
     title: str = Field(
@@ -30,19 +25,12 @@ class TaskCreateSchema(BaseModel):
         default=None,
         max_length=1000,
     )
-    due_date: datetime | None = None
+    due_date: date | None = None
     priority: PriorityTypes = PriorityTypes.LOW
 
     @field_validator("due_date")
     @classmethod
-    def validate_due_date(cls, value: datetime | None) -> datetime | None:
-        if value and value < datetime.now(timezone.utc):
-            raise ValueError("Due date cannot be in the past.")
-
-        return value
-    @field_validator("due_date")
-    @classmethod
-    def validate_due_date_field(cls, value):
+    def validate_due_date_field(cls, value: date | None) -> date | None:
         return validate_due_date(value)
 
 
@@ -58,18 +46,11 @@ class TaskUpdateSchema(BaseModel):
     )
     is_completed: bool | None = None
     priority: PriorityTypes | None = None
-    due_date: datetime | None = None
+    due_date: date | None = None
 
     @field_validator("due_date")
     @classmethod
-    def validate_due_date(cls, value: datetime | None) -> datetime | None:
-        if value and value < datetime.now(timezone.utc):
-            raise ValueError("Due date cannot be in the past.")
-
-        return value
-    @field_validator("due_date")
-    @classmethod
-    def validate_due_date_field(cls, value):
+    def validate_due_date_field(cls, value: date | None) -> date | None:
         return validate_due_date(value)
 
 
@@ -81,7 +62,7 @@ class TaskResponseSchema(BaseModel):
     description: str | None
     is_completed: bool
     priority: PriorityTypes
-    due_date: datetime | None
+    due_date: date | None
     owner_id: int
     created_date: datetime
     updated_date: datetime
@@ -89,10 +70,10 @@ class TaskResponseSchema(BaseModel):
 
 class TaskListResponseSchema(BaseModel):
 
-    results :list[TaskResponseSchema]
-    page: int 
-    page_size:int 
-    total: int  
+    results: list[TaskResponseSchema]
+    page: int
+    page_size: int
+    total: int
     pages: int
 
 
@@ -110,18 +91,12 @@ class TaskPutSchema(BaseModel):
 
     priority: PriorityTypes
 
-    due_date: datetime | None = None
+    due_date: date | None = None
 
     @field_validator("due_date")
     @classmethod
-    def validate_due_date(
-        cls,
-        value: datetime | None,
-    ) -> datetime | None:
-        if value and value < datetime.now(timezone.utc):
-            raise ValueError("Due date cannot be in the past.")
-
-        return value
+    def validate_due_date_field(cls, value: date | None) -> date | None:
+        return validate_due_date(value)
 
 
 class TaskSortField(str, Enum):
@@ -138,7 +113,7 @@ class SortOrder(str, Enum):
 
 
 class TaskQuerySchema(BaseModel):
-    
+
     q: str | None = Field(
         default=None,
         min_length=1,

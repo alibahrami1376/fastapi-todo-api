@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from sqlalchemy import or_
 from sqlalchemy.orm import Query, Session
@@ -114,31 +114,31 @@ class TaskRepository:
         params: TaskQuerySchema,
     ) -> tuple[list[TaskModel], int]:
 
-        query = self._base_query()
+        query = await self._base_query()
 
-        query = self._apply_owner_filter(
+        query = await self._apply_owner_filter(
             query,
             owner_id,
         )
 
-        query = self._apply_search(
+        query = await self._apply_search(
             query,
             params.q,
         )
 
-        query = self._apply_filters(
+        query = await self._apply_filters(
             query,
             params,
         )
 
         total = query.count()
 
-        query = self._apply_sorting(
+        query = await self._apply_sorting(
             query,
             params,
         )
 
-        query = self._apply_pagination(
+        query = await self._apply_pagination(
             query,
             params,
         )
@@ -152,11 +152,8 @@ class TaskRepository:
         task_id: int,
     ) -> TaskModel | None:
 
-        return (
-            self._base_query()
-            .filter(TaskModel.id == task_id)
-            .first()
-        )
+        query = await self._base_query()
+        return query.filter(TaskModel.id == task_id).first()
 
     async def get_by_id_and_owner_id(
         self,
@@ -164,21 +161,18 @@ class TaskRepository:
         owner_id: int,
     ) -> TaskModel | None:
 
-        return (
-            self._base_query()
-            .filter(
-                TaskModel.id == task_id,
-                TaskModel.owner_id == owner_id,
-            )
-            .first()
-        )
+        query = await self._base_query()
+        return query.filter(
+            TaskModel.id == task_id,
+            TaskModel.owner_id == owner_id,
+        ).first()
 
     async def create_task(
         self,
         title: str,
         description: str | None,
         priority: PriorityTypes,
-        due_date: datetime | None,
+        due_date: date | None,
         owner_id: int,
     ) -> TaskModel:
 

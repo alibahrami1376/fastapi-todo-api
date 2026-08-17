@@ -14,7 +14,7 @@ from schemas import LoginRequestSchema, RegisterRequestSchema
 
 class AuthService:
 
-    async def __init__(
+    def __init__(
         self,
         user_repo: UserRepository,
         session_repo: SessionRepository,
@@ -23,7 +23,7 @@ class AuthService:
         self.session_repo = session_repo
 
     async def register(self, request: RegisterRequestSchema):
-        existing_user = self.user_repo.get_by_email(request.email)
+        existing_user = await self.user_repo.get_by_email(request.email)
 
         if existing_user:
             raise HTTPException(
@@ -31,7 +31,7 @@ class AuthService:
                 detail=Messages.user_already_exists,
             )
 
-        self.user_repo.create_user(
+        await self.user_repo.create_user(
             email=request.email,
             password=request.password,
         )
@@ -41,7 +41,7 @@ class AuthService:
         }
 
     async def login(self, request: LoginRequestSchema):
-        user = self.user_repo.get_by_email(request.email)
+        user = await self.user_repo.get_by_email(request.email)
 
         if not user or not user.verify_password(request.password):
             raise HTTPException(
@@ -56,7 +56,7 @@ class AuthService:
             get_token_expiration_times()
         )
 
-        self.session_repo.create(
+        await self.session_repo.create(
             user_id=user.id,
             access_token_jti=access_jti,
             refresh_token_jti=refresh_jti,
@@ -77,7 +77,7 @@ class AuthService:
         user_id = int(payload["sub"])
         refresh_jti = payload["jti"]
 
-        session = self.session_repo.get_by_refresh_token_jti(
+        session = await self.session_repo.get_by_refresh_token_jti(
             refresh_jti
         )
 
@@ -87,7 +87,7 @@ class AuthService:
                 detail=Messages.token_invalid,
             )
 
-        user = self.user_repo.get_by_id(user_id)
+        user = await self.user_repo.get_by_id(user_id)
 
         if not user:
             raise HTTPException(
@@ -95,17 +95,14 @@ class AuthService:
                 detail=Messages.user_not_found,
             )
 
-        # Revoke old refresh token
-        self.session_repo.revoke_refresh_token(session)
+        await self.session_repo.revoke_refresh_token(session)
 
-        # Generate new token pair
         access_token, access_jti = generate_access_token(user.id)
         refresh_token, refresh_jti = generate_refresh_token(user.id)
 
         access_expires_at, refresh_expires_at = get_token_expiration_times()
 
-        # Create new session
-        self.session_repo.create(
+        await self.session_repo.create(
             user_id=user.id,
             access_token_jti=access_jti,
             refresh_token_jti=refresh_jti,
@@ -124,7 +121,7 @@ class AuthService:
 
         access_jti = payload["jti"]
 
-        session = self.session_repo.get_by_access_token_jti(
+        session = await self.session_repo.get_by_access_token_jti(
             access_jti
         )
 
@@ -134,8 +131,8 @@ class AuthService:
                 detail=Messages.token_invalid,
             )
 
-        self.session_repo.revoke_access_token(session)
-        self.session_repo.revoke_refresh_token(session)
+        await self.session_repo.revoke_access_token(session)
+        await self.session_repo.revoke_refresh_token(session)
 
         return {
             "detail": Messages.logged_out_successfully,

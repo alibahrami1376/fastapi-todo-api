@@ -28,12 +28,12 @@ router = APIRouter(
     response_model=TaskResponseSchema,
     status_code=status.HTTP_201_CREATED,
 )
-def create_todo(
+async def create_todo(
     request: TaskCreateSchema,
     current_user: UserModel = Depends(get_current_user),
     service: TaskService = Depends(get_task_service),
 ):
-    return service.create_task(
+    return await service.create_task(
         user_id=current_user.id,
         task=request,
     )
@@ -43,12 +43,12 @@ def create_todo(
     "",
     response_model=TaskListResponseSchema,
 )
-def get_todos(
+async def get_todos(
     params: TaskQuerySchema = Depends(),
     current_user: UserModel = Depends(get_current_user),
     service: TaskService = Depends(get_task_service),
 ):
-    return service.get_tasks(
+    return await service.get_tasks(
         user_id=current_user.id,
         params=params,
     )
@@ -58,12 +58,12 @@ def get_todos(
     "/{todo_id}",
     response_model=TaskResponseSchema,
 )
-def get_todo(
+async def get_todo(
     todo_id: int,
     current_user: UserModel = Depends(get_current_user),
     service: TaskService = Depends(get_task_service),
 ):
-    return service.get_task(
+    return await service.get_task(
         user_id=current_user.id,
         task_id=todo_id,
     )
@@ -73,13 +73,13 @@ def get_todo(
     "/{todo_id}",
     response_model=TaskResponseSchema,
 )
-def update_patch_todo(
+async def update_patch_todo(
     todo_id: int,
     request: TaskUpdateSchema,
     current_user: UserModel = Depends(get_current_user),
     service: TaskService = Depends(get_task_service),
 ):
-    return service.partial_update_task(
+    return await service.partial_update_task(
         user_id=current_user.id,
         task_id=todo_id,
         data=request,
@@ -90,13 +90,13 @@ def update_patch_todo(
     "/{todo_id}",
     response_model=TaskResponseSchema,
 )
-def update_put_todo(
+async def update_put_todo(
     todo_id: int,
     request: TaskPutSchema,
     current_user: UserModel = Depends(get_current_user),
     service: TaskService = Depends(get_task_service),
 ):
-    return service.update_task(
+    return await service.update_task(
         user_id=current_user.id,
         task_id=todo_id,
         data=request,
@@ -107,12 +107,12 @@ def update_put_todo(
     "/{todo_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-def delete_todo(
+async def delete_todo(
     todo_id: int,
     current_user: UserModel = Depends(get_current_user),
     service: TaskService = Depends(get_task_service),
 ):
-    service.delete_task(
+    await service.delete_task(
         user_id=current_user.id,
         task_id=todo_id,
     )

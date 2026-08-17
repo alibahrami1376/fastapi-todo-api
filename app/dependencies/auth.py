@@ -24,14 +24,14 @@ def get_auth_service(
     )
 
 
-def get_current_user(
+async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db),
 ) -> UserModel:
-    
-    if credentials is None: 
+
+    if credentials is None:
         raise AuthenticationException()
-    
+
     token = credentials.credentials
     payload = decode_access_token(token)
 
@@ -41,12 +41,12 @@ def get_current_user(
     session_repo = SessionRepository(db)
     user_repo = UserRepository(db)
 
-    session = session_repo.get_by_access_token_jti(access_jti)
+    session = await session_repo.get_by_access_token_jti(access_jti)
 
     if not session or session.access_revoked_at is not None:
         raise AuthenticationException()
 
-    user = user_repo.get_by_id(user_id)
+    user = await user_repo.get_by_id(user_id)
 
     if not user or not user.is_active:
         raise AuthenticationException()

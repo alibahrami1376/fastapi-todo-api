@@ -1,6 +1,6 @@
 from enum import Enum
 
-from sqlalchemy import Boolean, Column, DateTime, Enum as SQLEnum
+from sqlalchemy import Boolean, Column, Date, Enum as SQLEnum
 from sqlalchemy import ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
@@ -38,7 +38,7 @@ class TaskModel(BaseModel):
     )
 
     due_date = Column(
-        DateTime(timezone=True),
+        Date,
         nullable=True,
     )
 

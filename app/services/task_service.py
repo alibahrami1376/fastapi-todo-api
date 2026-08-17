@@ -17,7 +17,7 @@ class TaskService:
         task: TaskCreateSchema,
     ):
         try:
-            return self.task_repo.create_task(
+            return await self.task_repo.create_task(
                 title=task.title,
                 description=task.description,
                 priority=task.priority,
@@ -37,7 +37,7 @@ class TaskService:
         params: TaskQuerySchema,
     ):
         try:
-            tasks, total = self.task_repo.get_tasks(
+            tasks, total = await self.task_repo.get_tasks(
                 owner_id=user_id,
                 params=params,
             )
@@ -64,7 +64,7 @@ class TaskService:
         task_id: int,
     ):
         try:
-            task = self.task_repo.get_by_id(task_id)
+            task = await self.task_repo.get_by_id(task_id)
 
             if not task:
                 raise TodoNotFoundException()
@@ -92,7 +92,7 @@ class TaskService:
         data: TaskUpdateSchema,
     ):
         try:
-            task = self.task_repo.get_by_id_and_owner_id(
+            task = await self.task_repo.get_by_id_and_owner_id(
                 task_id,
                 user_id,
             )
@@ -108,7 +108,7 @@ class TaskService:
             task.priority = data.priority
             task.due_date = data.due_date
 
-            return self.task_repo.update_task(task)
+            return await self.task_repo.update_task(task)
 
         except HTTPException:
             raise
@@ -126,7 +126,7 @@ class TaskService:
         data: TaskUpdateSchema,
     ):
         try:
-            task = self.task_repo.get_by_id_and_owner_id(
+            task = await self.task_repo.get_by_id_and_owner_id(
                 task_id,
                 user_id,
             )
@@ -144,7 +144,7 @@ class TaskService:
             for field, value in update_data.items():
                 setattr(task, field, value)
 
-            return self.task_repo.update_task(task)
+            return await self.task_repo.update_task(task)
 
         except HTTPException:
             raise
@@ -161,7 +161,7 @@ class TaskService:
         task_id: int,
     ):
         try:
-            task = self.task_repo.get_by_id_and_owner_id(
+            task = await self.task_repo.get_by_id_and_owner_id(
                 task_id,
                 user_id,
             )
@@ -172,7 +172,7 @@ class TaskService:
                     detail=TaskMessages.TASK_NOT_FOUND,
                 )
 
-            self.task_repo.delete_task(task)
+            await self.task_repo.delete_task(task)
 
         except HTTPException:
             raise
