@@ -5,7 +5,6 @@ from pathlib import Path
 from alembic import context
 from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
-
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
@@ -26,6 +25,8 @@ if config.config_file_name is not None:
 # ... etc.
 
 # Load environment variables
+
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 ENV_PATH = BASE_DIR / ".env"
 
@@ -35,15 +36,17 @@ else:
     print("Warning: .env file not found. Falling back to global environment variables.")
 
 
-# Get DB URL
-DATABASE_URL = os.getenv("DATABASE_URL")
+flag_testing = os.getenv("TESTING", "false").lower() == "true"
 
-
-# Set SQLAlchemy DB URL into Alembic config
-if DATABASE_URL:
-    config.set_main_option("sqlalchemy.url", DATABASE_URL)
+if flag_testing:
+    database_url = os.getenv("TEST_DATABASE_URL")
 else:
-    raise ValueError("DATABASE_URL is not set in the environment variables.")
+    database_url = os.getenv("DATABASE_URL")
+
+if database_url:
+    config.set_main_option("sqlalchemy.url", database_url)
+else:
+    raise ValueError("Database URL is not set in the environment variables.")
 
 
 # target_metadata = Base.metadata
