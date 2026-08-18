@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     AUTH_COOKIE_HTTPONLY: bool = False
     AUTH_COOKIE_SECURE: bool = True
     AUTH_COOKIE_SAMESITE: str = "none"
+
     TIMEZONE: str = "Asia/Tehran"
 
     model_config = SettingsConfigDict(env_file=".env")

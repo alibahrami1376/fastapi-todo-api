@@ -29,12 +29,14 @@ class AuthService:
                 detail=Messages.user_already_exists,
             )
 
-        await self.user_repo.create_user(
+        user = await self.user_repo.create_user(
             email=request.email,
             password=request.password,
         )
 
         return {
+            "user_id": user.id,
+            "email": user.email,
             "detail": Messages.registered_successfully,
         }
 
