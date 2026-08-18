@@ -1,21 +1,18 @@
 from schemas.auth import (
-    RegisterRequestSchema,
-    RegisterResponseSchema,
     LoginRequestSchema,
     LoginResponseSchema,
-    RefreshTokenResponseSchema
-)
-from schemas.user import (
-    UserResponseSchema,
-    UserUpdateSchema
+    RefreshTokenResponseSchema,
+    RegisterRequestSchema,
+    RegisterResponseSchema,
 )
 from schemas.task import (
-    TaskCreateSchema,
-    TaskUpdateSchema,
-    TaskResponseSchema,
-    TaskQuerySchema,
     SortOrder,
-    TaskSortField,
+    TaskCreateSchema,
     TaskListResponseSchema,
-    TaskPutSchema
+    TaskPutSchema,
+    TaskQuerySchema,
+    TaskResponseSchema,
+    TaskSortField,
+    TaskUpdateSchema,
 )
+from schemas.user import UserResponseSchema, UserUpdateSchema

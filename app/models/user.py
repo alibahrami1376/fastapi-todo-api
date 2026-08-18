@@ -7,7 +7,6 @@ from sqlalchemy.orm import relationship
 
 from .base import BaseModel
 
-
 pwd_context = CryptContext(
     schemes=["bcrypt"],
     deprecated="auto",
@@ -22,10 +21,7 @@ class UsernameMixin:
         """Generate a random username using lowercase letters and digits."""
         characters = string.ascii_lowercase + string.digits
 
-        return "".join(
-            secrets.choice(characters)
-            for _ in range(length)
-        )
+        return "".join(secrets.choice(characters) for _ in range(length))
 
 
 class PasswordMixin:
@@ -79,6 +75,6 @@ class UserModel(PasswordMixin, UsernameMixin, BaseModel):
     )
 
     sessions = relationship(
-    "SessionModel",
-    back_populates="user",
+        "SessionModel",
+        back_populates="user",
     )

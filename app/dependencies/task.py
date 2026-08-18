@@ -1,9 +1,8 @@
-from sqlalchemy.orm import Session
-from fastapi import Depends
 from core.database import get_db
-from services.task_service import TaskService
+from fastapi import Depends
 from repositories import TaskRepository
-
+from services.task_service import TaskService
+from sqlalchemy.orm import Session
 
 
 def get_task_service(

@@ -1,0 +1,10 @@
+[tool.ruff]
+exclude = [
+    "app/migrations",
+]
+
+[tool.ruff.lint]
+ignore = ["B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]

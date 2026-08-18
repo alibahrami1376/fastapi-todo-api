@@ -1,13 +1,12 @@
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy.orm import Session
-
 from core.database import get_db
+from core.exceptions import AuthenticationException
 from core.security import decode_access_token
+from fastapi import Depends
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from models import UserModel
 from repositories import SessionRepository, UserRepository
 from services.auth_service import AuthService
-from core.exceptions import AuthenticationException
+from sqlalchemy.orm import Session
 
 security = HTTPBearer(auto_error=False)
 
@@ -52,4 +51,3 @@ async def get_current_user(
         raise AuthenticationException()
 
     return user
-

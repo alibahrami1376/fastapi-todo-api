@@ -1,4 +1,3 @@
-
 class Messages:
     TASK_CREATION_FAILED = "Failed to create task."
     TASK_FETCHING_FAILED = "Failed to fetch task."

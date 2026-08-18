@@ -1,34 +1,28 @@
 from datetime import date, datetime, timezone
 
-from sqlalchemy import or_
-from sqlalchemy.orm import Query, Session
-
 from models import PriorityTypes, TaskModel
 from schemas import (
     SortOrder,
     TaskQuerySchema,
     TaskSortField,
 )
+from sqlalchemy import or_
+from sqlalchemy.orm import Query, Session
 
 
 class TaskRepository:
-
     def __init__(self, db: Session):
         self.db = db
 
     async def _base_query(self) -> Query:
-        return self.db.query(TaskModel).filter(
-            TaskModel.deleted_at.is_(None)
-        )
+        return self.db.query(TaskModel).filter(TaskModel.deleted_at.is_(None))
 
     async def _apply_owner_filter(
         self,
         query: Query,
         owner_id: int,
     ) -> Query:
-        return query.filter(
-            TaskModel.owner_id == owner_id
-        )
+        return query.filter(TaskModel.owner_id == owner_id)
 
     async def _apply_search(
         self,
@@ -54,24 +48,16 @@ class TaskRepository:
     ) -> Query:
 
         if params.is_completed is not None:
-            query = query.filter(
-                TaskModel.is_completed == params.is_completed
-            )
+            query = query.filter(TaskModel.is_completed == params.is_completed)
 
         if params.priority is not None:
-            query = query.filter(
-                TaskModel.priority == params.priority
-            )
+            query = query.filter(TaskModel.priority == params.priority)
 
         if params.due_from is not None:
-            query = query.filter(
-                TaskModel.due_date >= params.due_from
-            )
+            query = query.filter(TaskModel.due_date >= params.due_from)
 
         if params.due_to is not None:
-            query = query.filter(
-                TaskModel.due_date <= params.due_to
-            )
+            query = query.filter(TaskModel.due_date <= params.due_to)
 
         return query
 
@@ -104,9 +90,7 @@ class TaskRepository:
 
         offset = (params.page - 1) * params.page_size
 
-        return query.offset(offset).limit(
-            params.page_size
-        )
+        return query.offset(offset).limit(params.page_size)
 
     async def get_tasks(
         self,

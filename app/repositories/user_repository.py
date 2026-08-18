@@ -1,36 +1,23 @@
 from datetime import datetime, timezone
 
-from sqlalchemy.orm import Session
-
 from models import UserModel
+from sqlalchemy.orm import Session
 
 
 class UserRepository:
     """Repository class for managing user-related database operations."""
-    
+
     def __init__(self, db: Session):
         self.db = db
 
     async def get_by_email(self, email: str) -> UserModel | None:
-        return (
-            self.db.query(UserModel)
-            .filter_by(email=email)
-            .first()
-        )
+        return self.db.query(UserModel).filter_by(email=email).first()
 
     async def get_by_username(self, username: str) -> UserModel | None:
-        return (
-            self.db.query(UserModel)
-            .filter_by(username=username)
-            .first()
-        )
+        return self.db.query(UserModel).filter_by(username=username).first()
 
     async def get_by_id(self, user_id: int) -> UserModel | None:
-        return (
-            self.db.query(UserModel)
-            .filter_by(id=user_id)
-            .first()
-        )
+        return self.db.query(UserModel).filter_by(id=user_id).first()
 
     async def create_user(
         self,

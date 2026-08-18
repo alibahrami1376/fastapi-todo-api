@@ -1,16 +1,17 @@
 from datetime import date, datetime
 from enum import Enum
+from zoneinfo import ZoneInfo
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-
+from core.config import settings
 from models import PriorityTypes
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 def validate_due_date(value: date | None) -> date | None:
     if value is None:
         return None
 
-    if value < date.today():
+    if value < datetime.now(ZoneInfo(settings.TIMEZONE)).date():
         raise ValueError("Due date cannot be in the past.")
 
     return value
@@ -69,7 +70,6 @@ class TaskResponseSchema(BaseModel):
 
 
 class TaskListResponseSchema(BaseModel):
-
     results: list[TaskResponseSchema]
     page: int
     page_size: int
@@ -113,7 +113,6 @@ class SortOrder(str, Enum):
 
 
 class TaskQuerySchema(BaseModel):
-
     q: str | None = Field(
         default=None,
         min_length=1,
@@ -150,8 +149,6 @@ class TaskQuerySchema(BaseModel):
             and self.due_to is not None
             and self.due_to < self.due_from
         ):
-            raise ValueError(
-                "due_to cannot be earlier than due_from."
-            )
+            raise ValueError("due_to cannot be earlier than due_from.")
 
         return self

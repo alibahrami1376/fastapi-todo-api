@@ -1,5 +1,7 @@
 import re
 
+from core.exceptions import CustomValidationException
+from messages import AuthMessages
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -8,10 +10,6 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-
-from core.exceptions import CustomValidationException
-from messages import AuthMessages
-
 
 
 class RegisterRequestSchema(BaseModel):
@@ -41,24 +39,16 @@ class RegisterRequestSchema(BaseModel):
         """Validate password complexity requirements."""
 
         if not re.search(r"[A-Z]", value):
-            raise CustomValidationException(
-                AuthMessages.password_one_uppercase
-            )
+            raise CustomValidationException(AuthMessages.password_one_uppercase)
 
         if not re.search(r"[a-z]", value):
-            raise CustomValidationException(
-                AuthMessages.password_one_lowercase
-            )
+            raise CustomValidationException(AuthMessages.password_one_lowercase)
 
         if not re.search(r"\d", value):
-            raise CustomValidationException(
-                AuthMessages.password_one_digit
-            )
+            raise CustomValidationException(AuthMessages.password_one_digit)
 
         if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", value):
-            raise CustomValidationException(
-                AuthMessages.password_special_char
-            )
+            raise CustomValidationException(AuthMessages.password_special_char)
 
         return value
 
@@ -67,9 +57,7 @@ class RegisterRequestSchema(BaseModel):
         """Ensure passwords match."""
 
         if self.password != self.confirm_password:
-            raise CustomValidationException(
-                AuthMessages.passwords_do_not_match
-            )
+            raise CustomValidationException(AuthMessages.passwords_do_not_match)
 
         return self
 
@@ -103,6 +91,7 @@ class RegisterResponseSchema(BaseModel):
     user_id: int
     email: EmailStr
     detail: str
+
 
 class RefreshTokenResponseSchema(BaseModel):
     access_token: str

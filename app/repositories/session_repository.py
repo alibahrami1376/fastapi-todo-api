@@ -1,12 +1,10 @@
 from datetime import datetime, timezone
 
-from sqlalchemy.orm import Session
-
 from models.session import SessionModel
+from sqlalchemy.orm import Session
 
 
 class SessionRepository:
-    
     def __init__(self, db: Session):
         self.db = db
 
@@ -41,21 +39,13 @@ class SessionRepository:
         self,
         jti: str,
     ) -> SessionModel | None:
-        return (
-            self.db.query(SessionModel)
-            .filter_by(access_token_jti=jti)
-            .first()
-        )
+        return self.db.query(SessionModel).filter_by(access_token_jti=jti).first()
 
     async def get_by_refresh_token_jti(
         self,
         jti: str,
     ) -> SessionModel | None:
-        return (
-            self.db.query(SessionModel)
-            .filter_by(refresh_token_jti=jti)
-            .first()
-        )
+        return self.db.query(SessionModel).filter_by(refresh_token_jti=jti).first()
 
     async def revoke_access_token(
         self,

@@ -1,5 +1,3 @@
-from fastapi import HTTPException, status
-
 from core.security import (
     decode_access_token,
     decode_refresh_token,
@@ -7,13 +5,13 @@ from core.security import (
     generate_refresh_token,
     get_token_expiration_times,
 )
+from fastapi import HTTPException, status
 from messages.auth import Messages
 from repositories import SessionRepository, UserRepository
 from schemas import LoginRequestSchema, RegisterRequestSchema
 
 
 class AuthService:
-
     def __init__(
         self,
         user_repo: UserRepository,
@@ -52,9 +50,7 @@ class AuthService:
         access_token, access_jti = generate_access_token(user.id)
         refresh_token, refresh_jti = generate_refresh_token(user.id)
 
-        access_expires_at, refresh_expires_at = (
-            get_token_expiration_times()
-        )
+        access_expires_at, refresh_expires_at = get_token_expiration_times()
 
         await self.session_repo.create(
             user_id=user.id,
@@ -77,9 +73,7 @@ class AuthService:
         user_id = int(payload["sub"])
         refresh_jti = payload["jti"]
 
-        session = await self.session_repo.get_by_refresh_token_jti(
-            refresh_jti
-        )
+        session = await self.session_repo.get_by_refresh_token_jti(refresh_jti)
 
         if not session or session.refresh_revoked_at is not None:
             raise HTTPException(
@@ -121,9 +115,7 @@ class AuthService:
 
         access_jti = payload["jti"]
 
-        session = await self.session_repo.get_by_access_token_jti(
-            access_jti
-        )
+        session = await self.session_repo.get_by_access_token_jti(access_jti)
 
         if not session or session.access_revoked_at is not None:
             raise HTTPException(

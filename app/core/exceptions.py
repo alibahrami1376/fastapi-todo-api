@@ -3,6 +3,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+
 class BaseAppException(Exception):
     def __init__(
         self,
@@ -16,6 +17,7 @@ class BaseAppException(Exception):
 
         super().__init__(message)
 
+
 class TodoNotFoundException(BaseAppException):
     def __init__(self):
         super().__init__(
@@ -23,6 +25,7 @@ class TodoNotFoundException(BaseAppException):
             message="Todo not found",
             status_code=404,
         )
+
 
 class PermissionDeniedException(BaseAppException):
     def __init__(self):
@@ -32,6 +35,7 @@ class PermissionDeniedException(BaseAppException):
             status_code=403,
         )
 
+
 class InvalidSortFieldException(BaseAppException):
     def __init__(self):
         super().__init__(
@@ -40,6 +44,7 @@ class InvalidSortFieldException(BaseAppException):
             status_code=400,
         )
 
+
 class AuthenticationException(BaseAppException):
     def __init__(self):
         super().__init__(
@@ -47,6 +52,7 @@ class AuthenticationException(BaseAppException):
             message="Authentication failed",
             status_code=401,
         )
+
 
 async def app_exception_handler(
     request: Request,
@@ -62,6 +68,7 @@ async def app_exception_handler(
             },
         },
     )
+
 
 async def validation_exception_handler(
     request: Request,
@@ -96,6 +103,7 @@ async def validation_exception_handler(
         },
     )
 
+
 async def http_exception_handler(
     request: Request,
     exc: HTTPException,
@@ -124,21 +132,30 @@ async def http_exception_handler(
         },
     )
 
-async def unhandled_exception_handler( request: Request, exc: Exception, ): 
-    return JSONResponse( 
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+
+async def unhandled_exception_handler(
+    request: Request,
+    exc: Exception,
+):
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
-            "success": False, 
-            "error": { 
-                "code": "INTERNAL_SERVER_ERROR", 
-                "message": "Internal server error", 
-            }, 
-        }, 
+            "success": False,
+            "error": {
+                "code": "INTERNAL_SERVER_ERROR",
+                "message": "Internal server error",
+            },
+        },
     )
+
 
 # ------------------------
 
-class CustomValidationException(HTTPException):
-     def __init__(self, detail: str = "Error in validating data",status_code:int=status.HTTP_400_BAD_REQUEST):
-         super().__init__(status_code=status_code, detail=detail)
 
+class CustomValidationException(HTTPException):
+    def __init__(
+        self,
+        detail: str = "Error in validating data",
+        status_code: int = status.HTTP_400_BAD_REQUEST,
+    ):
+        super().__init__(status_code=status_code, detail=detail)

@@ -1,10 +1,7 @@
-from fastapi import APIRouter, Depends, status
-from sqlalchemy.orm import Session
-
-from core.database import get_db
 from dependencies.auth import get_current_user
+from dependencies.task import get_task_service
+from fastapi import APIRouter, Depends, status
 from models import UserModel
-from repositories import TaskRepository
 from schemas import (
     TaskCreateSchema,
     TaskListResponseSchema,
@@ -14,13 +11,11 @@ from schemas import (
     TaskUpdateSchema,
 )
 from services.task_service import TaskService
-from dependencies.task import get_task_service
 
 router = APIRouter(
     prefix="/todos",
     tags=["todos"],
 )
-
 
 
 @router.post(

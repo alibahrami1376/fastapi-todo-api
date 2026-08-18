@@ -1,13 +1,14 @@
-from fastapi import HTTPException, status
 from math import ceil
 
+from core.exceptions import PermissionDeniedException, TodoNotFoundException
+from fastapi import HTTPException, status
 from messages import TaskMessages
 from repositories import TaskRepository
-from schemas import TaskCreateSchema, TaskUpdateSchema,TaskQuerySchema
-from core.exceptions import TodoNotFoundException,PermissionDeniedException
+from schemas import TaskCreateSchema, TaskQuerySchema, TaskUpdateSchema
+from sqlalchemy.exc import SQLAlchemyError
+
 
 class TaskService:
-
     def __init__(self, task_repo: TaskRepository):
         self.task_repo = task_repo
 
@@ -25,7 +26,7 @@ class TaskService:
                 owner_id=user_id,
             )
 
-        except Exception:
+        except SQLAlchemyError:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=TaskMessages.TASK_CREATION_FAILED,
@@ -52,12 +53,12 @@ class TaskService:
                 "pages": pages,
             }
 
-        except Exception:
+        except SQLAlchemyError:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=TaskMessages.TASK_FETCHING_FAILED,
             )
-        
+
     async def get_task(
         self,
         user_id: int,
@@ -80,11 +81,12 @@ class TaskService:
         ):
             raise
 
-        except Exception:
+        except SQLAlchemyError:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=TaskMessages.TASK_FETCHING_FAILED,
             )
+
     async def update_task(
         self,
         user_id: int,
@@ -113,10 +115,10 @@ class TaskService:
         except HTTPException:
             raise
 
-        except Exception:
+        except SQLAlchemyError:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=TaskMessages.TASK_UPDATE_FAILED,
+                detail=TaskMessages.TASK_FETCHING_FAILED,
             )
 
     async def partial_update_task(
@@ -137,9 +139,7 @@ class TaskService:
                     detail=TaskMessages.TASK_NOT_FOUND,
                 )
 
-            update_data = data.model_dump(
-                exclude_unset=True
-            )
+            update_data = data.model_dump(exclude_unset=True)
 
             for field, value in update_data.items():
                 setattr(task, field, value)
@@ -149,10 +149,10 @@ class TaskService:
         except HTTPException:
             raise
 
-        except Exception:
+        except SQLAlchemyError:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=TaskMessages.TASK_UPDATE_FAILED,
+                detail=TaskMessages.TASK_FETCHING_FAILED,
             )
 
     async def delete_task(
@@ -177,8 +177,8 @@ class TaskService:
         except HTTPException:
             raise
 
-        except Exception:
+        except SQLAlchemyError:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=TaskMessages.TASK_DELETION_FAILED,
+                detail=TaskMessages.TASK_FETCHING_FAILED,
             )

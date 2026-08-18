@@ -11,6 +11,7 @@ if str(APP_DIR) not in sys.path:
 load_dotenv(APP_DIR / ".env")
 
 from core.database import SessionLocal
+
 from scripts.factories.task import TaskFactory
 from scripts.factories.user import DEFAULT_TEST_PASSWORD, UserFactory
 
@@ -54,6 +55,7 @@ def seed():
 
     finally:
         db.close()
+
 
 if __name__ == "__main__":
     seed()

@@ -1,4 +1,3 @@
-
 class Messages:
     registered_successfully = "Your account has been created successfully."
     logged_in_successfully = "You have logged in successfully."
@@ -23,4 +22,3 @@ class Messages:
     password_one_digit = "Password required one digit at least"
     password_special_char = "Password required one special char at least"
     passwords_do_not_match = "Passwords are not even"
-    
