@@ -31,7 +31,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 ENV_PATH = BASE_DIR / ".env"
 
 if ENV_PATH.exists():
-    load_dotenv(ENV_PATH)
+    # override=False: variables already set in the shell take precedence over .env
+    load_dotenv(ENV_PATH, override=False)
 else:
     print("Warning: .env file not found. Falling back to global environment variables.")
 

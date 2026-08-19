@@ -14,7 +14,6 @@ class Settings(BaseSettings):
     AUTH_COOKIE_SAMESITE: str = "none"
 
     TIMEZONE: str = "Asia/Tehran"
-    TESTING: bool = False
 
     model_config = SettingsConfigDict(env_file=".env")
 
