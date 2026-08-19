@@ -3,6 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     DATABASE_URL: str
+    TEST_DATABASE_URL: str
 
     AUTH_JWT_SECRET_KEY: str = "change me"
     AUTH_ACCESS_TOKEN_EXPIRE_MINUTES: int = 10
@@ -13,6 +14,7 @@ class Settings(BaseSettings):
     AUTH_COOKIE_SAMESITE: str = "none"
 
     TIMEZONE: str = "Asia/Tehran"
+    TESTING: bool = False
 
     model_config = SettingsConfigDict(env_file=".env")
 
