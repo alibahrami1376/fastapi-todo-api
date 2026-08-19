@@ -24,7 +24,7 @@ A production-ready REST API for managing personal todo tasks, built with **FastA
   - [Lint and Reformat](#lint-en)
 - [Project Structure](#structure-en)
 - [Architecture](#architecture-en)
-- [Known Issues](#known-issues-en)
+- [Planned Features](#Planned-Features)
 - [License](#license-en)
 
 ---
@@ -347,13 +347,15 @@ All custom exceptions extend `BaseAppException` and are caught by `app_exception
 
 ---
 
-<a name="known-issues-en"></a>
-## Known Issues
-
-- Repositories use `async def` wrappers over synchronous SQLAlchemy — there is no real async I/O. A future version should migrate to `asyncpg` + `SQLAlchemy async`.
-- `get_db` does not call `db.rollback()` on exception — a failed write can leave a dirty session in edge cases.
-- No rate limiting — endpoints are unprotected against brute-force attacks.
-- No Docker setup — deployment requires manual environment configuration.
+<a name="Planned-Features"></a>
+## Planned-Features
+- [x] Fingerprint روی توکن
+- [ ] Bulk complete: `PATCH /api/v1/todos/bulk-complete`
+- [ ] Bulk delete: `DELETE /api/v1/todos/bulk-delete`
+- [ ] Statistics: `GET /api/v1/todos/stats`
+- [ ] Docker + CI/CD
+- [ ] Rate limiting
+- [ ] Structured logging
 
 ---
 
@@ -384,7 +386,7 @@ This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) f
   - [لینت و فرمت کد](#lint-fa)
 - [ساختار پروژه](#structure-fa)
 - [معماری](#architecture-fa)
-- [مشکلات شناخته‌شده](#known-issues-fa)
+- [ویژگی های  برنامه ریزی شده ](#Planned-Features)
 - [لایسنس](#license-fa)
 
 ---
@@ -680,12 +682,14 @@ fastapi-todo-api/
 ---
 
 <a name="known-issues-fa"></a>
-## مشکلات شناخته‌شده
-
-- Repository ها از `async def` روی SQLAlchemy همزمان استفاده می‌کنند — در واقع I/O غیرهمزمان وجود ندارد. نسخه آینده باید به `asyncpg` مهاجرت کند.
-- `get_db` در صورت خطا `db.rollback()` صدا نمی‌زند.
-- Rate limiting پیاده‌سازی نشده.
-- Docker setup وجود ندارد.
+## ویژگی های  برنامه ریزی شده 
+- [x] Fingerprint روی توکن
+- [ ] Bulk complete: `PATCH /api/v1/todos/bulk-complete`
+- [ ] Bulk delete: `DELETE /api/v1/todos/bulk-delete`
+- [ ] Statistics: `GET /api/v1/todos/stats`
+- [ ] Docker + CI/CD
+- [ ] Rate limiting
+- [ ] Structured logging
 
 ---
 
