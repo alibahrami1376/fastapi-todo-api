@@ -132,16 +132,13 @@ class TaskService:
         data: TaskUpdateSchema,
     ):
         try:
-            task = await self.task_repo.get_by_id_and_owner_id(
-                task_id,
-                user_id,
-            )
+            task = await self.task_repo.get_by_id(task_id)
 
             if not task:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=TaskMessages.TASK_NOT_FOUND,
-                )
+                raise TodoNotFoundException()
+
+            if task.owner_id != user_id:
+                raise PermissionDeniedException()
 
             update_data = data.model_dump(exclude_unset=True)
 
@@ -149,6 +146,12 @@ class TaskService:
                 setattr(task, field, value)
 
             return await self.task_repo.update_task(task)
+
+        except (
+            TodoNotFoundException,
+            PermissionDeniedException,
+        ):
+            raise
 
         except HTTPException:
             raise

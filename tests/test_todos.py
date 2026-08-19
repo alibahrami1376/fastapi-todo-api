@@ -134,22 +134,6 @@ def test_get_task_not_found(authenticated_client):
     assert response.status_code == 404
 
 
-def test_update_task_success(authenticated_client, task_payload):
-    create_response = authenticated_client.post(
-        "/api/v1/todos",
-        json=task_payload,
-    )
-    task_id = create_response.json()["id"]
-
-    response = authenticated_client.patch(
-        f"/api/v1/todos/{task_id}",
-        json={"title": "Updated Task"},
-    )
-
-    assert response.status_code == 200
-    assert response.json()["title"] == "Updated Task"
-
-
 def test_update_byput_task_success(authenticated_client, task_payload, user):
     create_response = authenticated_client.post(
         "/api/v1/todos",
@@ -256,6 +240,63 @@ def test_update_task_permission_denied(
     response = authenticated_client.put(
         f"/api/v1/todos/{task_id}",
         json=new_task_payload,
+    )
+
+    assert response.status_code == 403
+
+
+def test_partial_update_task_success(
+    authenticated_client,
+    task_payload,
+):
+    create_response = authenticated_client.post(
+        "/api/v1/todos",
+        json=task_payload,
+    )
+
+    task_id = create_response.json()["id"]
+
+    patch_payload = {
+        "title": "Updated Task",
+    }
+
+    response = authenticated_client.patch(
+        f"/api/v1/todos/{task_id}",
+        json=patch_payload,
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["id"] == task_id
+    assert data["title"] == "Updated Task"
+
+    assert data["description"] == task_payload["description"]
+    assert data["priority"] == task_payload["priority"]
+    assert data["is_completed"] is False
+    assert data["due_date"] == task_payload["due_date"]
+
+
+def test_partial_update_task_permission_denied(
+    authenticated_client,
+    second_authenticated_client,
+    task_payload,
+):
+    create_response = second_authenticated_client.post(
+        "/api/v1/todos",
+        json=task_payload,
+    )
+
+    task_id = create_response.json()["id"]
+
+    patch_payload = {
+        "title": "Unauthorized Update",
+    }
+
+    response = authenticated_client.patch(
+        f"/api/v1/todos/{task_id}",
+        json=patch_payload,
     )
 
     assert response.status_code == 403
