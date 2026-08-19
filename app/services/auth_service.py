@@ -52,7 +52,9 @@ class AuthService:
             )
 
         access_token, access_jti = generate_access_token(user.id)
-        refresh_token, refresh_jti = generate_refresh_token(user.id)
+        refresh_token, refresh_jti = generate_refresh_token(
+            user.id, fingerprint_hash=fingerprint_hash
+        )
 
         access_expires_at, refresh_expires_at = get_token_expiration_times()
 
@@ -62,7 +64,6 @@ class AuthService:
             refresh_token_jti=refresh_jti,
             access_expires_at=access_expires_at,
             refresh_expires_at=refresh_expires_at,
-            fingerprint_hash=fingerprint_hash,
         )
 
         return {
@@ -75,7 +76,8 @@ class AuthService:
     async def refresh_access_token(
         self, refresh_token: str, fingerprint_hash: str | None = None
     ):
-        payload = decode_refresh_token(refresh_token)
+        # fingerprint validation happens inside decode_refresh_token
+        payload = decode_refresh_token(refresh_token, fingerprint_hash=fingerprint_hash)
 
         user_id = int(payload["sub"])
         refresh_jti = payload["jti"]
@@ -83,15 +85,6 @@ class AuthService:
         session = await self.session_repo.get_by_refresh_token_jti(refresh_jti)
 
         if not session or session.refresh_revoked_at is not None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=Messages.token_invalid,
-            )
-
-        if (
-            session.fingerprint_hash is not None
-            and fingerprint_hash != session.fingerprint_hash
-        ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=Messages.token_invalid,
@@ -108,7 +101,9 @@ class AuthService:
         await self.session_repo.revoke_refresh_token(session)
 
         access_token, access_jti = generate_access_token(user.id)
-        refresh_token, refresh_jti = generate_refresh_token(user.id)
+        new_refresh_token, refresh_jti = generate_refresh_token(
+            user.id, fingerprint_hash=fingerprint_hash
+        )
 
         access_expires_at, refresh_expires_at = get_token_expiration_times()
 
@@ -118,12 +113,11 @@ class AuthService:
             refresh_token_jti=refresh_jti,
             access_expires_at=access_expires_at,
             refresh_expires_at=refresh_expires_at,
-            fingerprint_hash=fingerprint_hash,
         )
 
         return {
             "access_token": access_token,
-            "refresh_token": refresh_token,
+            "refresh_token": new_refresh_token,
             "token_type": "bearer",
         }
 

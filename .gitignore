@@ -222,3 +222,4 @@ PROJECT_REVIEW.md
 task.md
 app/pre-commit-errors.txt
 .ruff_cache
+flows.md

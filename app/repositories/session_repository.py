@@ -19,7 +19,6 @@ class SessionRepository:
         refresh_token_jti: str,
         access_expires_at: datetime,
         refresh_expires_at: datetime,
-        fingerprint_hash: str | None = None,
     ) -> SessionModel:
 
         session = SessionModel(
@@ -28,7 +27,6 @@ class SessionRepository:
             refresh_token_jti=refresh_token_jti,
             access_expires_at=access_expires_at,
             refresh_expires_at=refresh_expires_at,
-            fingerprint_hash=fingerprint_hash,
         )
 
         self.db.add(session)
