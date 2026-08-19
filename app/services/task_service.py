@@ -108,6 +108,7 @@ class TaskService:
             task.title = data.title
             task.description = data.description
             task.priority = data.priority
+            task.is_completed = data.is_completed
             task.due_date = data.due_date
 
             return await self.task_repo.update_task(task)
