@@ -29,6 +29,19 @@ class TaskCreateSchema(BaseModel):
     due_date: date | None = None
     priority: PriorityTypes = PriorityTypes.LOW
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "title": "Finish project report",
+                    "description": "Complete the weekly status report",
+                    "priority": "high",
+                    "due_date": "2026-08-31",
+                }
+            ]
+        }
+    )
+
     @field_validator("due_date")
     @classmethod
     def validate_due_date_field(cls, value: date | None) -> date | None:
@@ -49,6 +62,17 @@ class TaskUpdateSchema(BaseModel):
     priority: PriorityTypes | None = None
     due_date: date | None = None
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "title": "Updated task title",
+                    "is_completed": True,
+                }
+            ]
+        }
+    )
+
     @field_validator("due_date")
     @classmethod
     def validate_due_date_field(cls, value: date | None) -> date | None:
@@ -56,7 +80,24 @@ class TaskUpdateSchema(BaseModel):
 
 
 class TaskResponseSchema(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": 1,
+                    "title": "Finish project report",
+                    "description": "Complete the weekly status report",
+                    "is_completed": False,
+                    "priority": "high",
+                    "due_date": "2026-08-31",
+                    "owner_id": 1,
+                    "created_date": "2026-08-19T10:00:00+03:30",
+                    "updated_date": "2026-08-19T10:00:00+03:30",
+                }
+            ]
+        },
+    )
 
     id: int
     title: str
@@ -76,6 +117,32 @@ class TaskListResponseSchema(BaseModel):
     total: int
     pages: int
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "results": [
+                        {
+                            "id": 1,
+                            "title": "Finish project report",
+                            "description": "Complete the weekly status report",
+                            "is_completed": False,
+                            "priority": "high",
+                            "due_date": "2026-08-31",
+                            "owner_id": 1,
+                            "created_date": "2026-08-19T10:00:00+03:30",
+                            "updated_date": "2026-08-19T10:00:00+03:30",
+                        }
+                    ],
+                    "page": 1,
+                    "page_size": 10,
+                    "total": 1,
+                    "pages": 1,
+                }
+            ]
+        }
+    )
+
 
 class TaskPutSchema(BaseModel):
     title: str = Field(
@@ -92,6 +159,20 @@ class TaskPutSchema(BaseModel):
     priority: PriorityTypes
 
     due_date: date | None = None
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "title": "Finish project report",
+                    "description": "Complete the weekly status report",
+                    "is_completed": True,
+                    "priority": "high",
+                    "due_date": "2026-08-31",
+                }
+            ]
+        }
+    )
 
     @field_validator("due_date")
     @classmethod

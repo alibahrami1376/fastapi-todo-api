@@ -1,6 +1,7 @@
 from schemas.auth import (
     LoginRequestSchema,
     LoginResponseSchema,
+    LogoutResponseSchema,
     RefreshTokenResponseSchema,
     RegisterRequestSchema,
     RegisterResponseSchema,

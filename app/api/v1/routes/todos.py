@@ -1,3 +1,4 @@
+from api.v1.openapi_examples import TASK_LIST_RESPONSE_EXAMPLE, TASK_RESPONSE_EXAMPLE
 from dependencies.auth import get_current_user
 from dependencies.task import get_task_service
 from fastapi import APIRouter, Depends, status
@@ -20,8 +21,19 @@ router = APIRouter(
 
 @router.post(
     "",
-    response_model=TaskResponseSchema,
+    summary="Create a new todo",
+    description=(
+        "Create a task for the authenticated user. "
+        "Title is required (3–100 chars). due_date must be today or in the future."
+    ),
     status_code=status.HTTP_201_CREATED,
+    response_model=TaskResponseSchema,
+    responses={
+        status.HTTP_201_CREATED: {
+            "description": "Task created successfully",
+            "content": {"application/json": {"example": TASK_RESPONSE_EXAMPLE}},
+        },
+    },
 )
 async def create_todo(
     request: TaskCreateSchema,
@@ -36,7 +48,20 @@ async def create_todo(
 
 @router.get(
     "",
+    summary="List todos",
+    description=(
+        "Return a paginated list of the current user's tasks. "
+        "Supports search (q), filters (is_completed, priority, due_from, due_to), "
+        "and sorting (sort_by, order)."
+    ),
+    status_code=status.HTTP_200_OK,
     response_model=TaskListResponseSchema,
+    responses={
+        status.HTTP_200_OK: {
+            "description": "Paginated task list",
+            "content": {"application/json": {"example": TASK_LIST_RESPONSE_EXAMPLE}},
+        },
+    },
 )
 async def get_todos(
     params: TaskQuerySchema = Depends(),
@@ -51,7 +76,19 @@ async def get_todos(
 
 @router.get(
     "/{todo_id}",
+    summary="Get a todo by ID",
+    description=(
+        "Return a single task owned by the authenticated user. "
+        "Returns 404 if the task does not exist and 403 if it belongs to another user."
+    ),
+    status_code=status.HTTP_200_OK,
     response_model=TaskResponseSchema,
+    responses={
+        status.HTTP_200_OK: {
+            "description": "Task details",
+            "content": {"application/json": {"example": TASK_RESPONSE_EXAMPLE}},
+        },
+    },
 )
 async def get_todo(
     todo_id: int,
@@ -66,7 +103,27 @@ async def get_todo(
 
 @router.patch(
     "/{todo_id}",
+    summary="Partially update a todo",
+    description=(
+        "Update only the fields provided in the request body. "
+        "Omitted fields keep their current values."
+    ),
+    status_code=status.HTTP_200_OK,
     response_model=TaskResponseSchema,
+    responses={
+        status.HTTP_200_OK: {
+            "description": "Task updated successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        **TASK_RESPONSE_EXAMPLE,
+                        "title": "Updated task title",
+                        "is_completed": True,
+                    }
+                }
+            },
+        },
+    },
 )
 async def update_patch_todo(
     todo_id: int,
@@ -83,7 +140,26 @@ async def update_patch_todo(
 
 @router.put(
     "/{todo_id}",
+    summary="Replace a todo",
+    description=(
+        "Replace all editable fields of a task. "
+        "Every field in the body is required (full replacement)."
+    ),
+    status_code=status.HTTP_200_OK,
     response_model=TaskResponseSchema,
+    responses={
+        status.HTTP_200_OK: {
+            "description": "Task replaced successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        **TASK_RESPONSE_EXAMPLE,
+                        "is_completed": True,
+                    }
+                }
+            },
+        },
+    },
 )
 async def update_put_todo(
     todo_id: int,
@@ -100,7 +176,17 @@ async def update_put_todo(
 
 @router.delete(
     "/{todo_id}",
+    summary="Delete a todo",
+    description=(
+        "Soft-delete a task owned by the authenticated user. "
+        "The task is hidden from lists but not removed from the database."
+    ),
     status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        status.HTTP_204_NO_CONTENT: {
+            "description": "Task deleted successfully",
+        },
+    },
 )
 async def delete_todo(
     todo_id: int,

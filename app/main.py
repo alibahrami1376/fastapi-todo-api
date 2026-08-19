@@ -10,7 +10,14 @@ from core.exceptions import (
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 
-app = FastAPI()
+app = FastAPI(
+    title="Todo API",
+    description=(
+        "REST API for managing todos with JWT authentication, "
+        "search/filter/sort/pagination, and layered architecture."
+    ),
+    version="1.0.0",
+)
 
 
 # # include route

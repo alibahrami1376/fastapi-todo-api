@@ -86,14 +86,60 @@ class LoginResponseSchema(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                    "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                    "token_type": "bearer",
+                }
+            ]
+        }
+    )
+
 
 class RegisterResponseSchema(BaseModel):
     user_id: int
     email: EmailStr
     detail: str
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "user_id": 1,
+                    "email": "user@example.com",
+                    "detail": "Your account has been created successfully.",
+                }
+            ]
+        }
+    )
+
 
 class RefreshTokenResponseSchema(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                    "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                    "token_type": "bearer",
+                }
+            ]
+        }
+    )
+
+
+class LogoutResponseSchema(BaseModel):
+    detail: str
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [{"detail": "You have been logged out successfully."}]
+        }
+    )
