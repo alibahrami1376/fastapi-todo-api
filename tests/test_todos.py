@@ -150,6 +150,40 @@ def test_update_task_success(authenticated_client, task_payload):
     assert response.json()["title"] == "Updated Task"
 
 
+def test_update_byput_task_success(authenticated_client, task_payload, user):
+    create_response = authenticated_client.post(
+        "/api/v1/todos",
+        json=task_payload,
+    )
+
+    task_id = create_response.json()["id"]
+
+    new_task_payload = {
+        "title": "Test Task Put",
+        "description": "Task description",
+        "is_completed": True,
+        "priority": "low",
+        "due_date": None,
+    }
+
+    response = authenticated_client.put(
+        f"/api/v1/todos/{task_id}",
+        json=new_task_payload,
+    )
+
+    assert response.status_code == 200
+
+    response = authenticated_client.get(f"/api/v1/todos/{task_id}")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == task_id
+    assert data["owner_id"] == user.id
+    assert data["is_completed"] is True
+    assert data["title"] == new_task_payload["title"]
+    assert data["priority"] == new_task_payload["priority"]
+
+
 def test_delete_task_success(authenticated_client, task_payload):
     create_response = authenticated_client.post(
         "/api/v1/todos",
