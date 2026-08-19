@@ -214,3 +214,20 @@ def test_get_task_forbidden_for_other_user(
     response = second_authenticated_client.get(f"/api/v1/todos/{task_id}")
 
     assert response.status_code == 403
+
+
+def test_delete_task_permission_denied(
+    authenticated_client,
+    task_payload,
+    second_authenticated_client,
+):
+    create_response = second_authenticated_client.post(
+        "/api/v1/todos",
+        json=task_payload,
+    )
+
+    task_id = create_response.json()["id"]
+
+    response = authenticated_client.delete(f"/api/v1/todos/{task_id}")
+
+    assert response.status_code == 403
