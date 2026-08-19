@@ -35,6 +35,11 @@ class SessionModel(BaseModel):
         nullable=False,
     )
 
+    fingerprint_hash = Column(
+        String,
+        nullable=True,
+    )
+
     access_revoked_at = Column(
         DateTime(timezone=True),
         nullable=True,

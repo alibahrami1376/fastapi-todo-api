@@ -40,7 +40,9 @@ class AuthService:
             "detail": Messages.registered_successfully,
         }
 
-    async def login(self, request: LoginRequestSchema):
+    async def login(
+        self, request: LoginRequestSchema, fingerprint_hash: str | None = None
+    ):
         user = await self.user_repo.get_by_email(request.email)
 
         if not user or not user.verify_password(request.password):
@@ -60,6 +62,7 @@ class AuthService:
             refresh_token_jti=refresh_jti,
             access_expires_at=access_expires_at,
             refresh_expires_at=refresh_expires_at,
+            fingerprint_hash=fingerprint_hash,
         )
 
         return {
@@ -69,7 +72,9 @@ class AuthService:
             "token_type": "bearer",
         }
 
-    async def refresh_access_token(self, refresh_token: str):
+    async def refresh_access_token(
+        self, refresh_token: str, fingerprint_hash: str | None = None
+    ):
         payload = decode_refresh_token(refresh_token)
 
         user_id = int(payload["sub"])
@@ -78,6 +83,15 @@ class AuthService:
         session = await self.session_repo.get_by_refresh_token_jti(refresh_jti)
 
         if not session or session.refresh_revoked_at is not None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=Messages.token_invalid,
+            )
+
+        if (
+            session.fingerprint_hash is not None
+            and fingerprint_hash != session.fingerprint_hash
+        ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=Messages.token_invalid,
@@ -104,6 +118,7 @@ class AuthService:
             refresh_token_jti=refresh_jti,
             access_expires_at=access_expires_at,
             refresh_expires_at=refresh_expires_at,
+            fingerprint_hash=fingerprint_hash,
         )
 
         return {

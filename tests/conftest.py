@@ -169,6 +169,17 @@ def authenticated_client(client, user):
 
 
 @pytest.fixture
+def login_tokens(client, user):
+    """Return the raw login response dict (access_token + refresh_token)."""
+    response = client.post(
+        "/api/v1/auth/login",
+        json={"email": user.email, "password": "Aa@123456"},
+    )
+    assert response.status_code == 200, response.json()
+    return response.json()
+
+
+@pytest.fixture
 def second_authenticated_client(client, second_user):
     second_client = TestClient(app)
     return _login_client(second_client, second_user.email, "Bb@123456")

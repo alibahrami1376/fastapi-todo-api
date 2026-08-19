@@ -110,3 +110,124 @@ def test_login_missing_field(client):
     )
 
     assert response.status_code == 422
+
+
+# ---------------------------------------------------------
+# Refresh token
+# ---------------------------------------------------------
+
+
+def test_refresh_success(client, login_tokens):
+    """Same IP + User-Agent as login → tokens refreshed."""
+    response = client.post(
+        "/api/v1/auth/refresh",
+        headers={"Authorization": f"Bearer {login_tokens['refresh_token']}"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["access_token"]
+    assert data["refresh_token"]
+    assert data["token_type"] == "bearer"
+    assert data["refresh_token"] != login_tokens["refresh_token"]
+
+
+def test_refresh_token_is_rotated(client, login_tokens):
+    """Old refresh token must be invalid after rotation."""
+    old_refresh = login_tokens["refresh_token"]
+
+    client.post(
+        "/api/v1/auth/refresh",
+        headers={"Authorization": f"Bearer {old_refresh}"},
+    )
+
+    response = client.post(
+        "/api/v1/auth/refresh",
+        headers={"Authorization": f"Bearer {old_refresh}"},
+    )
+
+    assert response.status_code == 401
+
+
+def test_refresh_with_access_token_fails(client, login_tokens):
+    """Passing the access token to /refresh must fail (wrong type)."""
+    response = client.post(
+        "/api/v1/auth/refresh",
+        headers={"Authorization": f"Bearer {login_tokens['access_token']}"},
+    )
+
+    assert response.status_code == 401
+
+
+def test_refresh_invalid_token(client, user):
+    """Garbage token → 401."""
+    response = client.post(
+        "/api/v1/auth/refresh",
+        headers={"Authorization": "Bearer not.a.valid.token"},
+    )
+
+    assert response.status_code == 401
+
+
+def test_refresh_missing_token(client, user):
+    """No Authorization header → 401 (HTTPBearer auto_error=False path)."""
+    response = client.post("/api/v1/auth/refresh")
+
+    assert response.status_code == 401
+
+
+# ---------------------------------------------------------
+# Fingerprint — cross-client spoofing
+# ---------------------------------------------------------
+
+
+def test_refresh_fingerprint_mismatch(client, user):
+    """
+    Login from one User-Agent, then try to refresh from a different one.
+    The fingerprint stored in the session must not match → 401.
+    """
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={"email": user.email, "password": "Aa@123456"},
+        headers={"User-Agent": "LegitBrowser/1.0"},
+    )
+    assert login_response.status_code == 200
+    refresh_token = login_response.json()["refresh_token"]
+
+    spoof_response = client.post(
+        "/api/v1/auth/refresh",
+        headers={
+            "Authorization": f"Bearer {refresh_token}",
+            "User-Agent": "EvilBot/9.9",
+        },
+    )
+
+    assert spoof_response.status_code == 401
+    data = spoof_response.json()
+    assert data["success"] is False
+
+
+def test_refresh_fingerprint_match(client, user):
+    """
+    Login and refresh with the same User-Agent → must succeed.
+    """
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={"email": user.email, "password": "Aa@123456"},
+        headers={"User-Agent": "LegitBrowser/1.0"},
+    )
+    assert login_response.status_code == 200
+    refresh_token = login_response.json()["refresh_token"]
+
+    refresh_response = client.post(
+        "/api/v1/auth/refresh",
+        headers={
+            "Authorization": f"Bearer {refresh_token}",
+            "User-Agent": "LegitBrowser/1.0",
+        },
+    )
+
+    assert refresh_response.status_code == 200
+    data = refresh_response.json()
+    assert data["access_token"]
+    assert data["refresh_token"]

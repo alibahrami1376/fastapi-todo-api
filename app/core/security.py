@@ -1,3 +1,4 @@
+import hashlib
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -6,6 +7,12 @@ from jwt.exceptions import DecodeError, ExpiredSignatureError, InvalidSignatureE
 
 from core.config import settings
 from core.exceptions import AuthenticationException
+
+
+def build_fingerprint_hash(ip: str, user_agent: str) -> str:
+    """Return a SHA-256 hex digest of the client IP and User-Agent string."""
+    raw = f"{ip}:{user_agent}"
+    return hashlib.sha256(raw.encode()).hexdigest()
 
 
 def generate_access_token(user_id: int) -> tuple[str, str]:

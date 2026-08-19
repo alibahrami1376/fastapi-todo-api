@@ -4,8 +4,10 @@ from api.v1.openapi_examples import (
     REFRESH_RESPONSE_EXAMPLE,
     REGISTER_RESPONSE_EXAMPLE,
 )
+from core.exceptions import AuthenticationException
+from core.security import build_fingerprint_hash
 from dependencies.auth import get_auth_service, security
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from fastapi.security import HTTPAuthorizationCredentials
 from schemas import (
     LoginRequestSchema,
@@ -63,10 +65,14 @@ async def register(
     },
 )
 async def login(
-    request: LoginRequestSchema,
+    body: LoginRequestSchema,
+    http_request: Request,
     service: AuthService = Depends(get_auth_service),
 ):
-    return await service.login(request)
+    ip = http_request.client.host if http_request.client else "unknown"
+    user_agent = http_request.headers.get("user-agent", "")
+    fingerprint = build_fingerprint_hash(ip, user_agent)
+    return await service.login(body, fingerprint_hash=fingerprint)
 
 
 @router.post(
@@ -86,10 +92,20 @@ async def login(
     },
 )
 async def refresh_token(
+    http_request: Request,
     service: AuthService = Depends(get_auth_service),
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
-    return await service.refresh_access_token(credentials.credentials)
+    if not credentials:
+        raise AuthenticationException()
+
+    ip = http_request.client.host if http_request.client else "unknown"
+    user_agent = http_request.headers.get("user-agent", "")
+    fingerprint = build_fingerprint_hash(ip, user_agent)
+    return await service.refresh_access_token(
+        credentials.credentials,
+        fingerprint_hash=fingerprint,
+    )
 
 
 @router.post(
