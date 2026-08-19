@@ -231,3 +231,31 @@ def test_delete_task_permission_denied(
     response = authenticated_client.delete(f"/api/v1/todos/{task_id}")
 
     assert response.status_code == 403
+
+
+def test_update_task_permission_denied(
+    authenticated_client,
+    second_authenticated_client,
+    task_payload,
+):
+    create_response = second_authenticated_client.post(
+        "/api/v1/todos",
+        json=task_payload,
+    )
+
+    task_id = create_response.json()["id"]
+
+    new_task_payload = {
+        "title": "Updated Task",
+        "description": "Updated description",
+        "priority": "high",
+        "is_completed": True,
+        "due_date": None,
+    }
+
+    response = authenticated_client.put(
+        f"/api/v1/todos/{task_id}",
+        json=new_task_payload,
+    )
+
+    assert response.status_code == 403
