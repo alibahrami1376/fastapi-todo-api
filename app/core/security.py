@@ -2,8 +2,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import jwt
-from fastapi import HTTPException, status
-from jwt.exceptions import DecodeError, InvalidSignatureError
+from jwt.exceptions import DecodeError, ExpiredSignatureError, InvalidSignatureError
 
 from core.config import settings
 from core.exceptions import AuthenticationException
@@ -73,6 +72,9 @@ def decode_access_token(token: str) -> dict:
     except AuthenticationException:
         raise
 
+    except ExpiredSignatureError:
+        raise AuthenticationException()
+
     except InvalidSignatureError:
         raise AuthenticationException()
 
@@ -89,36 +91,27 @@ def decode_refresh_token(token: str) -> dict:
         )
 
         if decoded.get("type") != "refresh":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication failed, token type not valid",
-            )
+            raise AuthenticationException()
 
         if not decoded.get("sub"):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication failed, sub not in the payload",
-            )
+            raise AuthenticationException()
 
         if not decoded.get("jti"):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication failed, jti not in the payload",
-            )
+            raise AuthenticationException()
 
         return decoded
 
+    except AuthenticationException:
+        raise
+
+    except ExpiredSignatureError:
+        raise AuthenticationException()
+
     except InvalidSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication failed, invalid signature",
-        )
+        raise AuthenticationException()
 
     except DecodeError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication failed, decode failed",
-        )
+        raise AuthenticationException()
 
 
 def get_token_expiration_times() -> tuple[datetime, datetime]:
