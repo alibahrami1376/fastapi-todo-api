@@ -8,7 +8,7 @@
 
 <a name="english-version"></a>
 
-# FastAPI Todo API 🇬🇧
+# FastAPI Todo API 
 
 A production-ready REST API for managing personal todo tasks, built with **FastAPI**, **SQLAlchemy**, **PostgreSQL**, and **JWT authentication** following a clean layered architecture.
 
@@ -368,7 +368,7 @@ This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) f
 
 <a name="persian-version"></a>
 
-# FastAPI Todo API 🇮🇷
+# FastAPI Todo API 
 
 یک REST API آماده برای مدیریت وظایف شخصی، ساخته‌شده با **FastAPI**، **SQLAlchemy**، **PostgreSQL** و **JWT** بر پایه معماری لایه‌بندی‌شده.
 
