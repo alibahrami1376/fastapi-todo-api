@@ -39,7 +39,7 @@ async def login(
     return await service.login(request)
 
 
-@router.post("/refresh-token", response_model=RefreshTokenResponseSchema)
+@router.post("/refresh", response_model=RefreshTokenResponseSchema)
 async def refresh_token(
     service: AuthService = Depends(get_auth_service),
     credentials: HTTPAuthorizationCredentials = Depends(security),
