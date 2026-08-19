@@ -51,6 +51,12 @@ class AuthService:
                 detail=Messages.invalid_credentials,
             )
 
+        if not user.is_active or user.deleted_at is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=Messages.invalid_credentials,
+            )
+
         access_token, access_jti = generate_access_token(user.id)
         refresh_token, refresh_jti = generate_refresh_token(
             user.id, fingerprint_hash=fingerprint_hash

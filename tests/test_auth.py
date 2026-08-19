@@ -112,6 +112,52 @@ def test_login_missing_field(client):
     assert response.status_code == 422
 
 
+def test_login_inactive_user(client, db, login_payload):
+
+    from models import UserModel
+
+    inactive_user = UserModel(
+        email="inactive@test.com",
+        username=UserModel.generate_random_username(),
+        is_active=False,
+    )
+    inactive_user.set_password("Aa@123456")
+    db.add(inactive_user)
+    db.flush()
+
+    response = client.post(
+        "/api/v1/auth/login",
+        json={"email": "inactive@test.com", "password": "Aa@123456"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "BAD_REQUEST"
+
+
+def test_login_deleted_user(client, db):
+    from datetime import datetime, timezone
+
+    from models import UserModel
+
+    deleted_user = UserModel(
+        email="deleted@test.com",
+        username=UserModel.generate_random_username(),
+        is_active=True,
+    )
+    deleted_user.set_password("Aa@123456")
+    deleted_user.deleted_at = datetime.now(timezone.utc)
+    db.add(deleted_user)
+    db.flush()
+
+    response = client.post(
+        "/api/v1/auth/login",
+        json={"email": "deleted@test.com", "password": "Aa@123456"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "BAD_REQUEST"
+
+
 # ---------------------------------------------------------
 # Refresh token
 # ---------------------------------------------------------
