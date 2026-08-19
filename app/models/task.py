@@ -1,6 +1,6 @@
 from enum import Enum
 
-from sqlalchemy import Boolean, Column, Date, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, Date, ForeignKey, Index, Integer, String
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
@@ -15,6 +15,10 @@ class PriorityTypes(str, Enum):
 
 class TaskModel(BaseModel):
     __tablename__ = "tasks"
+    __table_args__ = (
+        Index("ix_tasks_owner_id", "owner_id"),
+        Index("ix_tasks_owner_id_is_completed", "owner_id", "is_completed"),
+    )
 
     title = Column(
         String,
