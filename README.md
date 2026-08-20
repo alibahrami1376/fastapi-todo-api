@@ -683,14 +683,21 @@ fastapi-todo-api/
 
 <a name="known-issues-fa"></a>
 ## ویژگی های  برنامه ریزی شده 
-- [x] Fingerprint روی توکن
+
+- [x] Add Fingerprint 
+- [ ] Structured logging
+- [ ] Centralized Logging — مخصوصاً خطاهای 500
+- [ ] Docker / Docker Compose
+- [ ] Redis
+- [ ] Rate Limiting
+- [ ] Security Hardening
+- [ ] CI/CD
+- [ ] Deployment
+- [ ] Health Check / Monitoring
+- [ ] Documentation نهایی
 - [ ] Bulk complete: `PATCH /api/v1/todos/bulk-complete`
 - [ ] Bulk delete: `DELETE /api/v1/todos/bulk-delete`
 - [ ] Statistics: `GET /api/v1/todos/stats`
-- [ ] Docker + CI/CD
-- [ ] Rate limiting
-- [ ] Structured logging
-
 ---
 
 <a name="license-fa"></a>
