@@ -246,6 +246,29 @@ class TaskRepository:
 
         return task
 
+    async def bulk_complete(
+        self,
+        tasks: list[TaskModel],
+    ) -> list[TaskModel]:
+        for task in tasks:
+            task.is_completed = True
+
+        self.db.commit()
+        for task in tasks:
+            self.db.refresh(task)
+
+        return tasks
+
+    async def bulk_soft_delete(
+        self,
+        tasks: list[TaskModel],
+    ) -> None:
+        now = datetime.now(timezone.utc)
+        for task in tasks:
+            task.deleted_at = now
+
+        self.db.commit()
+
     async def delete_task(
         self,
         task: TaskModel,

@@ -37,6 +37,7 @@ It is designed to demonstrate a real-world layered architecture with proper exce
 - **Session Management** — every login creates a session row; logout revokes both tokens
 - **Todo CRUD** — create, list, get, partial update (PATCH), full replace (PUT), soft-delete
 - **Todo Statistics** — `GET /api/v1/todos/stats` for total / completed / pending / overdue / by priority
+- **Bulk operations** — `PATCH /bulk-complete` and `DELETE /bulk-delete` for multiple owned tasks
 - **Search / Filter / Sort / Paginate** — query by keyword, `is_completed`, `priority`, `due_from`, `due_to`; sort by any field; paginate with `page` + `page_size`
 - **Soft Delete** — tasks are hidden, not physically removed
 - **Custom Exception Hierarchy** — consistent JSON error shape across all errors
@@ -168,13 +169,15 @@ uv sync --no-dev
 ### Todo endpoints
 
 ```
-POST   /api/v1/todos            Create a task
-GET    /api/v1/todos            List tasks (search/filter/sort/paginate)
-GET    /api/v1/todos/stats      Aggregate statistics for the current user
-GET    /api/v1/todos/{id}       Get a single task
-PATCH  /api/v1/todos/{id}       Partial update
-PUT    /api/v1/todos/{id}       Full replace
-DELETE /api/v1/todos/{id}       Soft-delete
+POST   /api/v1/todos                Create a task
+GET    /api/v1/todos                List tasks (search/filter/sort/paginate)
+GET    /api/v1/todos/stats          Aggregate statistics for the current user
+PATCH  /api/v1/todos/bulk-complete  Mark multiple tasks as completed
+DELETE /api/v1/todos/bulk-delete    Soft-delete multiple tasks
+GET    /api/v1/todos/{id}           Get a single task
+PATCH  /api/v1/todos/{id}           Partial update
+PUT    /api/v1/todos/{id}           Full replace
+DELETE /api/v1/todos/{id}           Soft-delete
 ```
 
 #### `GET /api/v1/todos/stats`
@@ -203,6 +206,31 @@ Example response:
     "high": 2
   }
 }
+```
+
+#### Bulk endpoints
+
+Both accept a JSON body with `ids` (1–50 positive integers; duplicates ignored).  
+All IDs must exist and belong to the current user — otherwise `404` or `403` (all-or-nothing).
+
+**`PATCH /api/v1/todos/bulk-complete`**
+
+```json
+{ "ids": [1, 2, 3] }
+```
+
+```json
+{ "updated": 3, "ids": [1, 2, 3] }
+```
+
+**`DELETE /api/v1/todos/bulk-delete`**
+
+```json
+{ "ids": [1, 2, 3] }
+```
+
+```json
+{ "deleted": 3, "ids": [1, 2, 3] }
 ```
 
 <a name="seed-en"></a>
@@ -425,6 +453,9 @@ Details: [docs/logging-event-pattern.md](docs/logging-event-pattern.md).
 - [x] Structured logging
 - [x] Centralized Logging — مخصوصاً خطاهای 500
 - [x] Migrate to `uv` (pyproject.toml + uv.lock)
+- [x] Statistics: `GET /api/v1/todos/stats`
+- [x] Bulk complete: `PATCH /api/v1/todos/bulk-complete`
+- [x] Bulk delete: `DELETE /api/v1/todos/bulk-delete`
 - [ ] Docker / Docker Compose  
 - [ ] Redis  
 - [ ] Rate Limiting
@@ -433,9 +464,6 @@ Details: [docs/logging-event-pattern.md](docs/logging-event-pattern.md).
 - [ ] Deployment
 - [ ] Health Check / Monitoring
 - [ ] Documentation
-- [ ] Bulk complete: `PATCH /api/v1/todos/bulk-complete`
-- [ ] Bulk delete: `DELETE /api/v1/todos/bulk-delete`
-- [x] Statistics: `GET /api/v1/todos/stats`
 - [ ] create root: sen tasks by email(Celery) 
 - [ ] create tak-weekly by  aspcheduler  (backup and  delet in database )
 - [ ] chash in Redis برای session/auth lookup در get_current_user

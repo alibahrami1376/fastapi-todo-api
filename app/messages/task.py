@@ -4,3 +4,5 @@ class Messages:
     TASK_UPDATE_FAILED = "Failed to update task."
     TASK_DELETION_FAILED = "Failed to delete task."
     TASK_NOT_FOUND = "Task not found."
+    TASK_BULK_UPDATE_FAILED = "Failed to bulk-update tasks."
+    TASK_BULK_DELETION_FAILED = "Failed to bulk-delete tasks."

@@ -268,3 +268,104 @@ class TaskService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=TaskMessages.TASK_FETCHING_FAILED,
             )
+
+    async def _resolve_owned_tasks(
+        self,
+        user_id: int,
+        task_ids: list[int],
+    ) -> list:
+        tasks = []
+        for task_id in task_ids:
+            task = await self.task_repo.get_by_id(task_id)
+
+            if not task:
+                raise TodoNotFoundException()
+
+            if task.owner_id != user_id:
+                raise PermissionDeniedException()
+
+            tasks.append(task)
+
+        return tasks
+
+    async def bulk_complete_tasks(
+        self,
+        user_id: int,
+        task_ids: list[int],
+    ):
+        try:
+            tasks = await self._resolve_owned_tasks(user_id, task_ids)
+            await self.task_repo.bulk_complete(tasks)
+            updated_ids = [task.id for task in tasks]
+
+            logger.bind(
+                event="tasks_bulk_completed",
+                operation="tasks.bulk_complete",
+                user_id=user_id,
+                updated=len(updated_ids),
+                ids=updated_ids,
+            ).info("Tasks bulk completed")
+
+            return {
+                "updated": len(updated_ids),
+                "ids": updated_ids,
+            }
+
+        except (
+            TodoNotFoundException,
+            PermissionDeniedException,
+        ):
+            raise
+
+        except SQLAlchemyError:
+            logger.bind(
+                event="tasks_bulk_complete_failed",
+                operation="tasks.bulk_complete",
+                user_id=user_id,
+                ids=task_ids,
+            ).exception("Tasks bulk complete failed")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=TaskMessages.TASK_BULK_UPDATE_FAILED,
+            )
+
+    async def bulk_delete_tasks(
+        self,
+        user_id: int,
+        task_ids: list[int],
+    ):
+        try:
+            tasks = await self._resolve_owned_tasks(user_id, task_ids)
+            deleted_ids = [task.id for task in tasks]
+            await self.task_repo.bulk_soft_delete(tasks)
+
+            logger.bind(
+                event="tasks_bulk_deleted",
+                operation="tasks.bulk_delete",
+                user_id=user_id,
+                deleted=len(deleted_ids),
+                ids=deleted_ids,
+            ).info("Tasks bulk deleted")
+
+            return {
+                "deleted": len(deleted_ids),
+                "ids": deleted_ids,
+            }
+
+        except (
+            TodoNotFoundException,
+            PermissionDeniedException,
+        ):
+            raise
+
+        except SQLAlchemyError:
+            logger.bind(
+                event="tasks_bulk_delete_failed",
+                operation="tasks.bulk_delete",
+                user_id=user_id,
+                ids=task_ids,
+            ).exception("Tasks bulk delete failed")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=TaskMessages.TASK_BULK_DELETION_FAILED,
+            )

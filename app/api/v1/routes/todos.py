@@ -1,4 +1,6 @@
 from api.v1.openapi_examples import (
+    TASK_BULK_COMPLETE_RESPONSE_EXAMPLE,
+    TASK_BULK_DELETE_RESPONSE_EXAMPLE,
     TASK_LIST_RESPONSE_EXAMPLE,
     TASK_RESPONSE_EXAMPLE,
     TASK_STATS_RESPONSE_EXAMPLE,
@@ -8,6 +10,9 @@ from dependencies.task import get_task_service
 from fastapi import APIRouter, Depends, status
 from models import UserModel
 from schemas import (
+    TaskBulkCompleteResponseSchema,
+    TaskBulkDeleteResponseSchema,
+    TaskBulkIdsSchema,
     TaskCreateSchema,
     TaskListResponseSchema,
     TaskPutSchema,
@@ -101,6 +106,66 @@ async def get_todo_stats(
     service: TaskService = Depends(get_task_service),
 ):
     return await service.get_stats(user_id=current_user.id)
+
+
+@router.patch(
+    "/bulk-complete",
+    summary="Bulk-complete todos",
+    description=(
+        "Mark multiple tasks as completed for the authenticated user. "
+        "All IDs must exist and belong to the current user; otherwise 404 or 403. "
+        "Accepts 1–50 ids (duplicates are ignored)."
+    ),
+    status_code=status.HTTP_200_OK,
+    response_model=TaskBulkCompleteResponseSchema,
+    responses={
+        status.HTTP_200_OK: {
+            "description": "Tasks marked as completed",
+            "content": {
+                "application/json": {"example": TASK_BULK_COMPLETE_RESPONSE_EXAMPLE}
+            },
+        },
+    },
+)
+async def bulk_complete_todos(
+    request: TaskBulkIdsSchema,
+    current_user: UserModel = Depends(get_current_user),
+    service: TaskService = Depends(get_task_service),
+):
+    return await service.bulk_complete_tasks(
+        user_id=current_user.id,
+        task_ids=request.ids,
+    )
+
+
+@router.delete(
+    "/bulk-delete",
+    summary="Bulk soft-delete todos",
+    description=(
+        "Soft-delete multiple tasks owned by the authenticated user. "
+        "All IDs must exist and belong to the current user; otherwise 404 or 403. "
+        "Accepts 1–50 ids (duplicates are ignored)."
+    ),
+    status_code=status.HTTP_200_OK,
+    response_model=TaskBulkDeleteResponseSchema,
+    responses={
+        status.HTTP_200_OK: {
+            "description": "Tasks soft-deleted",
+            "content": {
+                "application/json": {"example": TASK_BULK_DELETE_RESPONSE_EXAMPLE}
+            },
+        },
+    },
+)
+async def bulk_delete_todos(
+    request: TaskBulkIdsSchema,
+    current_user: UserModel = Depends(get_current_user),
+    service: TaskService = Depends(get_task_service),
+):
+    return await service.bulk_delete_tasks(
+        user_id=current_user.id,
+        task_ids=request.ids,
+    )
 
 
 @router.get(

@@ -176,6 +176,71 @@ class TaskStatsResponseSchema(BaseModel):
     )
 
 
+class TaskBulkIdsSchema(BaseModel):
+    ids: list[int] = Field(
+        min_length=1,
+        max_length=50,
+        description="Task IDs to process (1–50 items).",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "ids": [1, 2, 3],
+                }
+            ]
+        }
+    )
+
+    @field_validator("ids")
+    @classmethod
+    def validate_ids(cls, value: list[int]) -> list[int]:
+        if any(task_id < 1 for task_id in value):
+            raise ValueError("All task ids must be positive integers.")
+
+        # Preserve order, drop duplicates
+        unique: list[int] = []
+        seen: set[int] = set()
+        for task_id in value:
+            if task_id not in seen:
+                seen.add(task_id)
+                unique.append(task_id)
+        return unique
+
+
+class TaskBulkCompleteResponseSchema(BaseModel):
+    updated: int
+    ids: list[int]
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "updated": 3,
+                    "ids": [1, 2, 3],
+                }
+            ]
+        }
+    )
+
+
+class TaskBulkDeleteResponseSchema(BaseModel):
+    deleted: int
+    ids: list[int]
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "deleted": 3,
+                    "ids": [1, 2, 3],
+                }
+            ]
+        }
+    )
+
+
 class TaskPutSchema(BaseModel):
     title: str = Field(
         min_length=3,

@@ -459,3 +459,168 @@ def test_get_stats_overdue_counts_pending_past_due(
     assert data["completed"] == 1
     assert data["pending"] == 2
     assert data["overdue"] == 1
+
+
+# ---------------------------------------------------------
+# Bulk complete / delete
+# ---------------------------------------------------------
+
+
+def test_bulk_complete_unauthorized(client):
+    response = client.patch(
+        "/api/v1/todos/bulk-complete",
+        json={"ids": [1]},
+    )
+
+    assert response.status_code == 401
+
+
+def test_bulk_complete_success(authenticated_client, task_payload):
+    first = authenticated_client.post(
+        "/api/v1/todos",
+        json={**task_payload, "title": "Bulk one"},
+    )
+    second = authenticated_client.post(
+        "/api/v1/todos",
+        json={**task_payload, "title": "Bulk two"},
+    )
+    ids = [first.json()["id"], second.json()["id"]]
+
+    response = authenticated_client.patch(
+        "/api/v1/todos/bulk-complete",
+        json={"ids": ids},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["updated"] == 2
+    assert data["ids"] == ids
+
+    for task_id in ids:
+        detail = authenticated_client.get(f"/api/v1/todos/{task_id}")
+        assert detail.status_code == 200
+        assert detail.json()["is_completed"] is True
+
+
+def test_bulk_complete_not_found(authenticated_client, task_payload):
+    created = authenticated_client.post("/api/v1/todos", json=task_payload)
+
+    response = authenticated_client.patch(
+        "/api/v1/todos/bulk-complete",
+        json={"ids": [created.json()["id"], 999999]},
+    )
+
+    assert response.status_code == 404
+
+
+def test_bulk_complete_forbidden_for_other_user(
+    authenticated_client,
+    db,
+    second_user,
+    task_payload,
+):
+    from models import PriorityTypes, TaskModel
+
+    own = authenticated_client.post("/api/v1/todos", json=task_payload)
+    other = TaskModel(
+        title="Other bulk task",
+        description="Owned by second user",
+        priority=PriorityTypes.LOW,
+        owner_id=second_user.id,
+        is_completed=False,
+    )
+    db.add(other)
+    db.flush()
+
+    response = authenticated_client.patch(
+        "/api/v1/todos/bulk-complete",
+        json={"ids": [own.json()["id"], other.id]},
+    )
+
+    assert response.status_code == 403
+
+
+def test_bulk_complete_validation_empty_ids(authenticated_client):
+    response = authenticated_client.patch(
+        "/api/v1/todos/bulk-complete",
+        json={"ids": []},
+    )
+
+    assert response.status_code == 422
+
+
+def test_bulk_delete_unauthorized(client):
+    response = client.request(
+        "DELETE",
+        "/api/v1/todos/bulk-delete",
+        json={"ids": [1]},
+    )
+
+    assert response.status_code == 401
+
+
+def test_bulk_delete_success(authenticated_client, task_payload):
+    first = authenticated_client.post(
+        "/api/v1/todos",
+        json={**task_payload, "title": "Delete one"},
+    )
+    second = authenticated_client.post(
+        "/api/v1/todos",
+        json={**task_payload, "title": "Delete two"},
+    )
+    ids = [first.json()["id"], second.json()["id"]]
+
+    response = authenticated_client.request(
+        "DELETE",
+        "/api/v1/todos/bulk-delete",
+        json={"ids": ids},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["deleted"] == 2
+    assert data["ids"] == ids
+
+    for task_id in ids:
+        detail = authenticated_client.get(f"/api/v1/todos/{task_id}")
+        assert detail.status_code == 404
+
+
+def test_bulk_delete_not_found(authenticated_client, task_payload):
+    created = authenticated_client.post("/api/v1/todos", json=task_payload)
+
+    response = authenticated_client.request(
+        "DELETE",
+        "/api/v1/todos/bulk-delete",
+        json={"ids": [created.json()["id"], 999999]},
+    )
+
+    assert response.status_code == 404
+
+
+def test_bulk_delete_forbidden_for_other_user(
+    authenticated_client,
+    db,
+    second_user,
+    task_payload,
+):
+    from models import PriorityTypes, TaskModel
+
+    own = authenticated_client.post("/api/v1/todos", json=task_payload)
+    other = TaskModel(
+        title="Other delete task",
+        description="Owned by second user",
+        priority=PriorityTypes.LOW,
+        owner_id=second_user.id,
+        is_completed=False,
+    )
+    db.add(other)
+    db.flush()
+
+    response = authenticated_client.request(
+        "DELETE",
+        "/api/v1/todos/bulk-delete",
+        json={"ids": [own.json()["id"], other.id]},
+    )
+
+    assert response.status_code == 403

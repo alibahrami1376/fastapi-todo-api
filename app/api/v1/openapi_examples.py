@@ -61,3 +61,13 @@ TASK_STATS_RESPONSE_EXAMPLE = {
         "high": 2,
     },
 }
+
+TASK_BULK_COMPLETE_RESPONSE_EXAMPLE = {
+    "updated": 3,
+    "ids": [1, 2, 3],
+}
+
+TASK_BULK_DELETE_RESPONSE_EXAMPLE = {
+    "deleted": 3,
+    "ids": [1, 2, 3],
+}

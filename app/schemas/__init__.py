@@ -8,6 +8,9 @@ from schemas.auth import (
 )
 from schemas.task import (
     SortOrder,
+    TaskBulkCompleteResponseSchema,
+    TaskBulkDeleteResponseSchema,
+    TaskBulkIdsSchema,
     TaskCreateSchema,
     TaskListResponseSchema,
     TaskPutSchema,
