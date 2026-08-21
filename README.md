@@ -54,9 +54,9 @@ It is designed to demonstrate a real-world layered architecture with proper exce
 |-------------|---------|
 | Python | 3.10+ |
 | PostgreSQL | 13+ |
-| pip | latest |
+| [uv](https://docs.astral.sh/uv/) | latest |
 
-Key dependencies (see `requirements.txt` for the full list):
+Key dependencies (declared in `pyproject.toml`, locked in `uv.lock`):
 
 - `fastapi` 0.141+
 - `sqlalchemy` 2.0+
@@ -67,7 +67,7 @@ Key dependencies (see `requirements.txt` for the full list):
 - `psycopg2-binary`
 - `python-dotenv`
 - `loguru`, `asgi-correlation-id`
-- `pytest`, `pytest-asyncio`
+- Dev: `pytest`, `pytest-asyncio`, `ruff`, `pre-commit`, `faker`
 
 ---
 
@@ -119,12 +119,10 @@ LOG_RETENTION=14 days
 git clone https://github.com/your-username/fastapi-todo-api.git
 cd fastapi-todo-api
 
-# 2. Create and activate a virtual environment
-python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+# 2. Install uv (if needed): https://docs.astral.sh/uv/getting-started/installation/
 
-# 3. Install dependencies
-pip install -r requirements.txt
+# 3. Install dependencies into .venv (runtime + dev)
+uv sync
 
 # 4. Set up environment variables
 cp app/.env.example app/.env
@@ -136,14 +134,20 @@ psql -U postgres -c "CREATE DATABASE todo_test;"
 
 # 6. Run database migrations
 cd app
-TESTING=false alembic upgrade head
+TESTING=false uv run alembic upgrade head
+cd ..
 
 # 7. Start the development server
-cd ..
-uvicorn app.main:app --reload --app-dir app
+uv run uvicorn main:app --reload --app-dir app
 ```
 
 The API will be available at `http://127.0.0.1:8000`.
+
+Runtime-only install (no test/lint tools):
+
+```bash
+uv sync --no-dev
+```
 
 ---
 
@@ -176,7 +180,7 @@ DELETE /api/v1/todos/{id}       Soft-delete
 
 ```bash
 cd app
-python scripts/seed.py
+uv run python scripts/seed.py
 ```
 
 Generates fake users and tasks using `Faker`.
@@ -203,16 +207,16 @@ Make sure `TEST_DATABASE_URL` is set in `app/.env`, then:
 
 ```bash
 # Apply migrations to the test database
-cd app && TESTING=true alembic upgrade head && cd ..
+cd app && TESTING=true uv run alembic upgrade head && cd ..
 
 # Run all tests
-pytest
+uv run pytest
 
 # Run with verbose output
-pytest -v
+uv run pytest -v
 
 # Run only auth tests
-pytest tests/test_auth.py -v
+uv run pytest tests/test_auth.py -v
 ```
 
 All 32 tests run against an isolated test database using nested transactions — each test rolls back automatically.
@@ -224,13 +228,13 @@ The project uses **Ruff** for linting and formatting:
 
 ```bash
 # Check for lint errors
-ruff check app/
+uv run ruff check app/
 
 # Auto-fix
-ruff check app/ --fix
+uv run ruff check app/ --fix
 
 # Format code
-ruff format app/
+uv run ruff format app/
 ```
 
 ---
@@ -311,8 +315,9 @@ fastapi-todo-api/
 │   ├── test_auth.py                Auth endpoint tests (17 tests)
 │   └── test_todos.py               Todo endpoint tests (15 tests)
 │
-├── requirements.txt
-├── pyproject.toml                  Ruff + Pytest configuration
+├── .python-version                 Pinned Python version for uv
+├── pyproject.toml                  Project deps + Ruff/Pytest config
+├── uv.lock                         Locked dependency versions
 └── README.md
 ```
 
@@ -389,6 +394,7 @@ Details: [docs/logging-event-pattern.md](docs/logging-event-pattern.md).
 - [x] Add Fingerprint 
 - [x] Structured logging
 - [x] Centralized Logging — مخصوصاً خطاهای 500
+- [x] Migrate to `uv` (pyproject.toml + uv.lock)
 - [ ] Docker / Docker Compose
 - [ ] Redis
 - [ ] Rate Limiting

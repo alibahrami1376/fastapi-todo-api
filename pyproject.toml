@@ -1,4 +1,40 @@
+[project]
+name = "fastapi-todo-api"
+version = "1.0.0"
+description = "REST API for managing todos with JWT authentication and layered architecture"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.141.0",
+    "uvicorn[standard]>=0.52.0",
+    "sqlalchemy>=2.0.51",
+    "alembic>=1.18.5",
+    "psycopg2-binary>=2.9.12",
+    "pydantic[email]>=2.13.4",
+    "pydantic-settings>=2.14.2",
+    "pyjwt>=2.13.0",
+    "passlib[bcrypt]>=1.7.4",
+    "bcrypt>=4.0.1,<4.1",
+    "python-dotenv>=1.2.2",
+    "python-multipart>=0.0.32",
+    "loguru>=0.7.3",
+    "asgi-correlation-id>=5.0.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.16.3",
+    "pre-commit>=4.6.2",
+    "faker>=40.36.0",
+    "httpx2>=2.12.0",
+]
+
+[tool.uv]
+package = false
+
 [tool.ruff]
+target-version = "py310"
 exclude = [
     "app/migrations",
 ]
