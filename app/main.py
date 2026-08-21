@@ -1,5 +1,5 @@
-# route import
 from api.routers import api_router
+from asgi_correlation_id import CorrelationIdMiddleware
 from core.exceptions import (
     BaseAppException,
     app_exception_handler,
@@ -7,8 +7,22 @@ from core.exceptions import (
     unhandled_exception_handler,
     validation_exception_handler,
 )
+from core.logging.config import setup_logging
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
+from middleware.correlation import CorrelationIdLoggingMiddleware
+from middleware.logging import RequestLoggingMiddleware
+
+# =========================
+# Logging
+# =========================
+
+setup_logging()
+
+
+# =========================
+# FastAPI
+# =========================
 
 app = FastAPI(
     title="Todo API",
@@ -20,10 +34,25 @@ app = FastAPI(
 )
 
 
-# # include route
+# =========================
+# Middleware
+# =========================
+app.add_middleware(CorrelationIdLoggingMiddleware)
+app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(CorrelationIdMiddleware)
+
+
+# =========================
+# Routes
+# =========================
+
 app.include_router(api_router)
 
-# add exeption
+
+# =========================
+# Exception handlers
+# =========================
+
 app.add_exception_handler(
     BaseAppException,
     app_exception_handler,
@@ -34,7 +63,10 @@ app.add_exception_handler(
     http_exception_handler,
 )
 
-app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(
+    RequestValidationError,
+    validation_exception_handler,
+)
 
 app.add_exception_handler(
     Exception,

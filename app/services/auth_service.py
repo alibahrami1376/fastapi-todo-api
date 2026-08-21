@@ -6,6 +6,7 @@ from core.security import (
     get_token_expiration_times,
 )
 from fastapi import HTTPException, status
+from loguru import logger
 from messages.auth import Messages
 from repositories import SessionRepository, UserRepository
 from schemas import LoginRequestSchema, RegisterRequestSchema
@@ -21,6 +22,8 @@ class AuthService:
         self.session_repo = session_repo
 
     async def register(self, request: RegisterRequestSchema):
+
+        logger.info("start step authservice-register ")
         existing_user = await self.user_repo.get_by_email(request.email)
 
         if existing_user:

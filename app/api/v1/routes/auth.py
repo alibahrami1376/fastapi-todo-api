@@ -9,6 +9,7 @@ from core.security import build_fingerprint_hash
 from dependencies.auth import get_auth_service, security
 from fastapi import APIRouter, Depends, Request, status
 from fastapi.security import HTTPAuthorizationCredentials
+from loguru import logger
 from schemas import (
     LoginRequestSchema,
     LoginResponseSchema,
@@ -45,6 +46,7 @@ async def register(
     request: RegisterRequestSchema,
     service: AuthService = Depends(get_auth_service),
 ):
+    logger.info("start step register")
     return await service.register(request)
 
 
