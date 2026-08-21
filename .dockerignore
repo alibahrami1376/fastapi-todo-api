@@ -1,0 +1,53 @@
+# Git / VCS
+.git
+.gitignore
+.gitattributes
+
+# Virtualenvs
+.venv
+venv
+env
+
+# Python caches / tooling
+__pycache__
+**/__pycache__
+*.py[cod]
+*$py.class
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+.tox
+.nox
+
+# Local env & secrets (never bake into the image)
+.env
+.env.*
+!.env.example
+app/.env
+app/.env.*
+!app/.env.example
+
+# Logs & runtime data
+logs
+app/logs
+*.log
+
+# IDE / editor
+.idea
+.vscode
+*.swp
+*.swo
+.cursor
+
+# Docs & review notes (not needed in the image)
+docs
+PROJECT_REVIEW.md
+todo_task.md
+task.md
+README-STRUCHER.md
+
+# OS junk
+.DS_Store
+Thumbs.db

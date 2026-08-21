@@ -16,6 +16,7 @@ A production-ready REST API for managing personal todo tasks, built with **FastA
 - [Project Structure](#structure-en)
 - [Architecture](#architecture-en)
 - [Logging](#logging-en)
+- [Deployment (Docker)](#deployment-en)
 - [Planned Features](#Planned-Features)
 - [License](#license-en)
 
@@ -374,6 +375,9 @@ fastapi-todo-api/
 │   └── test_todos.py               Todo endpoint tests (15 tests)
 │
 ├── .python-version                 Pinned Python version for uv
+├── Dockerfile                      Multi-stage: development + production
+├── docker-compose.yml              Postgres + API (dev default, prod profile)
+├── .dockerignore
 ├── pyproject.toml                  Project deps + Ruff/Pytest config
 ├── uv.lock                         Locked dependency versions
 └── README.md
@@ -447,6 +451,47 @@ Details: [docs/logging-event-pattern.md](docs/logging-event-pattern.md).
 
 ---
 
+<a name="deployment-en"></a>
+## Deployment (Docker)
+
+The project ships a multi-stage `Dockerfile` (`development` / `production`) and `docker-compose.yml`.
+
+### Development (default)
+
+```bash
+docker compose up --build
+```
+
+- API: `http://127.0.0.1:8000` (reload enabled, `./app` mounted)
+- Postgres: `localhost:5432` (`postgres` / `postgres` / db `todo`)
+- Migrations run automatically on container start (`RUN_MIGRATIONS=true`)
+
+### Production image
+
+```bash
+# Build only the production stage
+docker build --target production -t fastapi-todo-api:prod .
+
+# Or via Compose (starts db + api-prod; does not start the dev api)
+docker compose --profile prod up -d --build db api-prod
+```
+
+Set a real secret before production:
+
+```bash
+export AUTH_JWT_SECRET_KEY='your-long-random-secret'
+```
+
+### Useful commands
+
+```bash
+docker compose logs -f api
+docker compose exec api uv run pytest
+docker compose down
+```
+
+---
+
 <a name="Planned-Features"></a>
 ## Planned-Features
 - [x] Add Fingerprint 
@@ -456,7 +501,7 @@ Details: [docs/logging-event-pattern.md](docs/logging-event-pattern.md).
 - [x] Statistics: `GET /api/v1/todos/stats`
 - [x] Bulk complete: `PATCH /api/v1/todos/bulk-complete`
 - [x] Bulk delete: `DELETE /api/v1/todos/bulk-delete`
-- [ ] Docker / Docker Compose  
+- [x] Docker / Docker Compose  
 - [ ] Redis  
 - [ ] Rate Limiting
 - [ ] Security Hardening

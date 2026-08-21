@@ -1,0 +1,80 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: todo-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: todo
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d todo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Development API (default)
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: todo-api-dev
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/todo
+      TEST_DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/todo_test
+      AUTH_JWT_SECRET_KEY: Zr7STfWeyvkSe+bJXYGlpQQ/mH3A1pKz0+oFsFDHCfU=  
+      AUTH_ACCESS_TOKEN_EXPIRE_MINUTES: ${AUTH_ACCESS_TOKEN_EXPIRE_MINUTES:-10}
+      AUTH_REFRESH_TOKEN_EXPIRE_DAYS: ${AUTH_REFRESH_TOKEN_EXPIRE_DAYS:-30}
+      TIMEZONE: ${TIMEZONE:-Asia/Tehran}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_DIR: logs
+      LOG_ROTATION: ${LOG_ROTATION:-10 MB}
+      LOG_RETENTION: ${LOG_RETENTION:-14 days}
+      RUN_MIGRATIONS: "true"
+    volumes:
+      - ./app:/app/app
+      - api_logs:/app/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Production API — enable with: docker compose --profile prod up -d --build
+  api-prod:
+    profiles: ["prod"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: todo-api-prod
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/todo
+      TEST_DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/todo_test
+      AUTH_JWT_SECRET_KEY: ${AUTH_JWT_SECRET_KEY:-change-me-in-production}
+      AUTH_ACCESS_TOKEN_EXPIRE_MINUTES: ${AUTH_ACCESS_TOKEN_EXPIRE_MINUTES:-10}
+      AUTH_REFRESH_TOKEN_EXPIRE_DAYS: ${AUTH_REFRESH_TOKEN_EXPIRE_DAYS:-30}
+      TIMEZONE: ${TIMEZONE:-Asia/Tehran}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_DIR: logs
+      LOG_ROTATION: ${LOG_ROTATION:-10 MB}
+      LOG_RETENTION: ${LOG_RETENTION:-14 days}
+      RUN_MIGRATIONS: "true"
+    volumes:
+      - api_logs:/app/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  api_logs:
