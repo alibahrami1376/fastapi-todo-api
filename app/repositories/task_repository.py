@@ -1,12 +1,14 @@
 from datetime import date, datetime, timezone
+from zoneinfo import ZoneInfo
 
+from core.config import settings
 from models import PriorityTypes, TaskModel
 from schemas import (
     SortOrder,
     TaskQuerySchema,
     TaskSortField,
 )
-from sqlalchemy import or_
+from sqlalchemy import and_, case, func, or_
 from sqlalchemy.orm import Query, Session
 
 
@@ -130,6 +132,66 @@ class TaskRepository:
         tasks = query.all()
 
         return tasks, total
+
+    async def get_stats(self, owner_id: int) -> dict:
+        today = datetime.now(ZoneInfo(settings.TIMEZONE)).date()
+
+        query = await self._base_query()
+        query = await self._apply_owner_filter(query, owner_id)
+
+        row = query.with_entities(
+            func.count(TaskModel.id).label("total"),
+            func.coalesce(
+                func.sum(case((TaskModel.is_completed.is_(True), 1), else_=0)),
+                0,
+            ).label("completed"),
+            func.coalesce(
+                func.sum(case((TaskModel.is_completed.is_(False), 1), else_=0)),
+                0,
+            ).label("pending"),
+            func.coalesce(
+                func.sum(case((TaskModel.priority == PriorityTypes.LOW, 1), else_=0)),
+                0,
+            ).label("priority_low"),
+            func.coalesce(
+                func.sum(
+                    case((TaskModel.priority == PriorityTypes.MEDIUM, 1), else_=0)
+                ),
+                0,
+            ).label("priority_medium"),
+            func.coalesce(
+                func.sum(case((TaskModel.priority == PriorityTypes.HIGH, 1), else_=0)),
+                0,
+            ).label("priority_high"),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (
+                            and_(
+                                TaskModel.is_completed.is_(False),
+                                TaskModel.due_date.isnot(None),
+                                TaskModel.due_date < today,
+                            ),
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ),
+                0,
+            ).label("overdue"),
+        ).one()
+
+        return {
+            "total": int(row.total or 0),
+            "completed": int(row.completed or 0),
+            "pending": int(row.pending or 0),
+            "overdue": int(row.overdue or 0),
+            "by_priority": {
+                "low": int(row.priority_low or 0),
+                "medium": int(row.priority_medium or 0),
+                "high": int(row.priority_high or 0),
+            },
+        }
 
     async def get_by_id(
         self,

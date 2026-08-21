@@ -1,4 +1,8 @@
-from api.v1.openapi_examples import TASK_LIST_RESPONSE_EXAMPLE, TASK_RESPONSE_EXAMPLE
+from api.v1.openapi_examples import (
+    TASK_LIST_RESPONSE_EXAMPLE,
+    TASK_RESPONSE_EXAMPLE,
+    TASK_STATS_RESPONSE_EXAMPLE,
+)
 from dependencies.auth import get_current_user
 from dependencies.task import get_task_service
 from fastapi import APIRouter, Depends, status
@@ -9,6 +13,7 @@ from schemas import (
     TaskPutSchema,
     TaskQuerySchema,
     TaskResponseSchema,
+    TaskStatsResponseSchema,
     TaskUpdateSchema,
 )
 from services.task_service import TaskService
@@ -72,6 +77,30 @@ async def get_todos(
         user_id=current_user.id,
         params=params,
     )
+
+
+@router.get(
+    "/stats",
+    summary="Get todo statistics",
+    description=(
+        "Return aggregate statistics for the authenticated user's tasks: "
+        "total, completed, pending, overdue, and counts by priority. "
+        "Soft-deleted tasks are excluded. Overdue means pending with due_date before today."
+    ),
+    status_code=status.HTTP_200_OK,
+    response_model=TaskStatsResponseSchema,
+    responses={
+        status.HTTP_200_OK: {
+            "description": "Task statistics",
+            "content": {"application/json": {"example": TASK_STATS_RESPONSE_EXAMPLE}},
+        },
+    },
+)
+async def get_todo_stats(
+    current_user: UserModel = Depends(get_current_user),
+    service: TaskService = Depends(get_task_service),
+):
+    return await service.get_stats(user_id=current_user.id)
 
 
 @router.get(

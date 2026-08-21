@@ -49,3 +49,15 @@ TASK_LIST_RESPONSE_EXAMPLE = {
     "total": 1,
     "pages": 1,
 }
+
+TASK_STATS_RESPONSE_EXAMPLE = {
+    "total": 10,
+    "completed": 4,
+    "pending": 6,
+    "overdue": 2,
+    "by_priority": {
+        "low": 3,
+        "medium": 5,
+        "high": 2,
+    },
+}

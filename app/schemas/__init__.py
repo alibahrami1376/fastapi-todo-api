@@ -14,6 +14,7 @@ from schemas.task import (
     TaskQuerySchema,
     TaskResponseSchema,
     TaskSortField,
+    TaskStatsResponseSchema,
     TaskUpdateSchema,
 )
 from schemas.user import UserResponseSchema, UserUpdateSchema

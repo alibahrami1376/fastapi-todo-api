@@ -300,3 +300,162 @@ def test_partial_update_task_permission_denied(
     )
 
     assert response.status_code == 403
+
+
+# ---------------------------------------------------------
+# Stats
+# ---------------------------------------------------------
+
+
+def test_get_stats_unauthorized(client):
+    response = client.get("/api/v1/todos/stats")
+
+    assert response.status_code == 401
+
+
+def test_get_stats_empty(authenticated_client):
+    response = authenticated_client.get("/api/v1/todos/stats")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "total": 0,
+        "completed": 0,
+        "pending": 0,
+        "overdue": 0,
+        "by_priority": {
+            "low": 0,
+            "medium": 0,
+            "high": 0,
+        },
+    }
+
+
+def test_get_stats_success(authenticated_client, task_payload):
+    authenticated_client.post(
+        "/api/v1/todos",
+        json={**task_payload, "title": "Low pending", "priority": "low"},
+    )
+    medium = authenticated_client.post(
+        "/api/v1/todos",
+        json={**task_payload, "title": "Medium pending", "priority": "medium"},
+    )
+    high = authenticated_client.post(
+        "/api/v1/todos",
+        json={**task_payload, "title": "High completed", "priority": "high"},
+    )
+
+    authenticated_client.patch(
+        f"/api/v1/todos/{medium.json()['id']}",
+        json={"is_completed": True},
+    )
+    authenticated_client.patch(
+        f"/api/v1/todos/{high.json()['id']}",
+        json={"is_completed": True},
+    )
+
+    response = authenticated_client.get("/api/v1/todos/stats")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 3
+    assert data["completed"] == 2
+    assert data["pending"] == 1
+    assert data["by_priority"] == {
+        "low": 1,
+        "medium": 1,
+        "high": 1,
+    }
+
+
+def test_get_stats_excludes_soft_deleted(authenticated_client, task_payload):
+    created = authenticated_client.post("/api/v1/todos", json=task_payload)
+    task_id = created.json()["id"]
+
+    delete_response = authenticated_client.delete(f"/api/v1/todos/{task_id}")
+    assert delete_response.status_code == 204
+
+    response = authenticated_client.get("/api/v1/todos/stats")
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 0
+    assert response.json()["pending"] == 0
+
+
+def test_get_stats_excludes_other_users_tasks(
+    authenticated_client,
+    db,
+    user,
+    second_user,
+    task_payload,
+):
+    from models import PriorityTypes, TaskModel
+
+    authenticated_client.post("/api/v1/todos", json=task_payload)
+
+    other_task = TaskModel(
+        title="Other user task",
+        description="Should not appear in stats",
+        priority=PriorityTypes.HIGH,
+        owner_id=second_user.id,
+        is_completed=False,
+    )
+    db.add(other_task)
+    db.flush()
+
+    response = authenticated_client.get("/api/v1/todos/stats")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["by_priority"]["low"] == 1
+    assert data["by_priority"]["high"] == 0
+
+
+def test_get_stats_overdue_counts_pending_past_due(
+    authenticated_client,
+    db,
+    user,
+):
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+
+    from core.config import settings
+    from models import PriorityTypes, TaskModel
+
+    today = datetime.now(ZoneInfo(settings.TIMEZONE)).date()
+
+    overdue_task = TaskModel(
+        title="Overdue pending task",
+        description="Past due and pending",
+        priority=PriorityTypes.MEDIUM,
+        due_date=today - timedelta(days=3),
+        owner_id=user.id,
+        is_completed=False,
+    )
+    completed_past_due = TaskModel(
+        title="Completed past due task",
+        description="Past due but completed",
+        priority=PriorityTypes.LOW,
+        due_date=today - timedelta(days=1),
+        owner_id=user.id,
+        is_completed=True,
+    )
+    future_pending = TaskModel(
+        title="Future pending task",
+        description="Not overdue",
+        priority=PriorityTypes.HIGH,
+        due_date=today + timedelta(days=5),
+        owner_id=user.id,
+        is_completed=False,
+    )
+    db.add_all([overdue_task, completed_past_due, future_pending])
+    db.flush()
+
+    response = authenticated_client.get("/api/v1/todos/stats")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 3
+    assert data["completed"] == 1
+    assert data["pending"] == 2
+    assert data["overdue"] == 1

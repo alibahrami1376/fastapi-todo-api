@@ -36,6 +36,7 @@ It is designed to demonstrate a real-world layered architecture with proper exce
 - **Refresh Token Fingerprint** — `SHA-256(IP + User-Agent)` embedded in the refresh JWT to prevent token theft across different clients
 - **Session Management** — every login creates a session row; logout revokes both tokens
 - **Todo CRUD** — create, list, get, partial update (PATCH), full replace (PUT), soft-delete
+- **Todo Statistics** — `GET /api/v1/todos/stats` for total / completed / pending / overdue / by priority
 - **Search / Filter / Sort / Paginate** — query by keyword, `is_completed`, `priority`, `due_from`, `due_to`; sort by any field; paginate with `page` + `page_size`
 - **Soft Delete** — tasks are hidden, not physically removed
 - **Custom Exception Hierarchy** — consistent JSON error shape across all errors
@@ -169,10 +170,39 @@ uv sync --no-dev
 ```
 POST   /api/v1/todos            Create a task
 GET    /api/v1/todos            List tasks (search/filter/sort/paginate)
+GET    /api/v1/todos/stats      Aggregate statistics for the current user
 GET    /api/v1/todos/{id}       Get a single task
 PATCH  /api/v1/todos/{id}       Partial update
 PUT    /api/v1/todos/{id}       Full replace
 DELETE /api/v1/todos/{id}       Soft-delete
+```
+
+#### `GET /api/v1/todos/stats`
+
+Returns counts for the authenticated user only (soft-deleted tasks are excluded).
+
+| Field | Meaning |
+|-------|---------|
+| `total` | All active tasks |
+| `completed` | `is_completed = true` |
+| `pending` | `is_completed = false` |
+| `overdue` | Pending tasks with `due_date` before today (app timezone) |
+| `by_priority` | Counts for `low` / `medium` / `high` |
+
+Example response:
+
+```json
+{
+  "total": 10,
+  "completed": 4,
+  "pending": 6,
+  "overdue": 2,
+  "by_priority": {
+    "low": 3,
+    "medium": 5,
+    "high": 2
+  }
+}
 ```
 
 <a name="seed-en"></a>
@@ -395,17 +425,22 @@ Details: [docs/logging-event-pattern.md](docs/logging-event-pattern.md).
 - [x] Structured logging
 - [x] Centralized Logging — مخصوصاً خطاهای 500
 - [x] Migrate to `uv` (pyproject.toml + uv.lock)
-- [ ] Docker / Docker Compose
-- [ ] Redis
+- [ ] Docker / Docker Compose  
+- [ ] Redis  
 - [ ] Rate Limiting
 - [ ] Security Hardening
 - [ ] CI/CD
 - [ ] Deployment
 - [ ] Health Check / Monitoring
-- [ ] Documentation نهایی
+- [ ] Documentation
 - [ ] Bulk complete: `PATCH /api/v1/todos/bulk-complete`
 - [ ] Bulk delete: `DELETE /api/v1/todos/bulk-delete`
-- [ ] Statistics: `GET /api/v1/todos/stats`
+- [x] Statistics: `GET /api/v1/todos/stats`
+- [ ] create root: sen tasks by email(Celery) 
+- [ ] create tak-weekly by  aspcheduler  (backup and  delet in database )
+- [ ] chash in Redis برای session/auth lookup در get_current_user
+- [ ] cash  rout state  after crate route 
+- [ ] cash in todos realyy slow rout  
 
 ---
 

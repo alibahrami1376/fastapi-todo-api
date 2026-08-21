@@ -144,6 +144,38 @@ class TaskListResponseSchema(BaseModel):
     )
 
 
+class TaskPriorityStatsSchema(BaseModel):
+    low: int = 0
+    medium: int = 0
+    high: int = 0
+
+
+class TaskStatsResponseSchema(BaseModel):
+    total: int
+    completed: int
+    pending: int
+    overdue: int
+    by_priority: TaskPriorityStatsSchema
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "total": 10,
+                    "completed": 4,
+                    "pending": 6,
+                    "overdue": 2,
+                    "by_priority": {
+                        "low": 3,
+                        "medium": 5,
+                        "high": 2,
+                    },
+                }
+            ]
+        }
+    )
+
+
 class TaskPutSchema(BaseModel):
     title: str = Field(
         min_length=3,

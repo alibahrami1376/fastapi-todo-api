@@ -72,6 +72,31 @@ class TaskService:
                 detail=TaskMessages.TASK_FETCHING_FAILED,
             )
 
+    async def get_stats(self, user_id: int):
+        try:
+            stats = await self.task_repo.get_stats(owner_id=user_id)
+            logger.bind(
+                event="tasks_stats_fetched",
+                operation="tasks.stats",
+                user_id=user_id,
+                total=stats["total"],
+                completed=stats["completed"],
+                pending=stats["pending"],
+                overdue=stats["overdue"],
+            ).info("Task stats fetched")
+            return stats
+
+        except SQLAlchemyError:
+            logger.bind(
+                event="tasks_stats_failed",
+                operation="tasks.stats",
+                user_id=user_id,
+            ).exception("Task stats fetch failed")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=TaskMessages.TASK_FETCHING_FAILED,
+            )
+
     async def get_task(
         self,
         user_id: int,
