@@ -22,11 +22,14 @@ class AuthService:
         self.session_repo = session_repo
 
     async def register(self, request: RegisterRequestSchema):
-
-        logger.info("start step authservice-register ")
         existing_user = await self.user_repo.get_by_email(request.email)
 
         if existing_user:
+            logger.bind(
+                event="register_rejected",
+                operation="auth.register",
+                reason="user_already_exists",
+            ).info("Register rejected")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=Messages.user_already_exists,
@@ -36,6 +39,12 @@ class AuthService:
             email=request.email,
             password=request.password,
         )
+
+        logger.bind(
+            event="user_registered",
+            operation="auth.register",
+            user_id=user.id,
+        ).info("User registered")
 
         return {
             "user_id": user.id,
@@ -49,12 +58,23 @@ class AuthService:
         user = await self.user_repo.get_by_email(request.email)
 
         if not user or not user.verify_password(request.password):
+            logger.bind(
+                event="login_failed",
+                operation="auth.login",
+                reason="invalid_credentials",
+            ).info("Login failed")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=Messages.invalid_credentials,
             )
 
         if not user.is_active or user.deleted_at is not None:
+            logger.bind(
+                event="login_failed",
+                operation="auth.login",
+                reason="inactive_or_deleted",
+                user_id=user.id,
+            ).info("Login failed")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=Messages.invalid_credentials,
@@ -75,6 +95,12 @@ class AuthService:
             refresh_expires_at=refresh_expires_at,
         )
 
+        logger.bind(
+            event="user_logged_in",
+            operation="auth.login",
+            user_id=user.id,
+        ).info("User logged in")
+
         return {
             "user": user,
             "access_token": access_token,
@@ -94,6 +120,12 @@ class AuthService:
         session = await self.session_repo.get_by_refresh_token_jti(refresh_jti)
 
         if not session or session.refresh_revoked_at is not None:
+            logger.bind(
+                event="token_refresh_failed",
+                operation="auth.refresh",
+                reason="invalid_or_revoked_session",
+                user_id=user_id,
+            ).info("Token refresh failed")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=Messages.token_invalid,
@@ -102,6 +134,12 @@ class AuthService:
         user = await self.user_repo.get_by_id(user_id)
 
         if not user:
+            logger.bind(
+                event="token_refresh_failed",
+                operation="auth.refresh",
+                reason="user_not_found",
+                user_id=user_id,
+            ).info("Token refresh failed")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=Messages.user_not_found,
@@ -124,6 +162,12 @@ class AuthService:
             refresh_expires_at=refresh_expires_at,
         )
 
+        logger.bind(
+            event="token_refreshed",
+            operation="auth.refresh",
+            user_id=user.id,
+        ).info("Token refreshed")
+
         return {
             "access_token": access_token,
             "refresh_token": new_refresh_token,
@@ -138,6 +182,11 @@ class AuthService:
         session = await self.session_repo.get_by_access_token_jti(access_jti)
 
         if not session or session.access_revoked_at is not None:
+            logger.bind(
+                event="logout_failed",
+                operation="auth.logout",
+                reason="invalid_or_revoked_session",
+            ).info("Logout failed")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=Messages.token_invalid,
@@ -145,6 +194,12 @@ class AuthService:
 
         await self.session_repo.revoke_access_token(session)
         await self.session_repo.revoke_refresh_token(session)
+
+        logger.bind(
+            event="user_logged_out",
+            operation="auth.logout",
+            user_id=session.user_id,
+        ).info("User logged out")
 
         return {
             "detail": Messages.logged_out_successfully,

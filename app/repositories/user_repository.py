@@ -1,6 +1,5 @@
 from datetime import datetime, timezone
 
-from loguru import logger
 from models import UserModel
 from sqlalchemy.orm import Session
 
@@ -12,7 +11,6 @@ class UserRepository:
         self.db = db
 
     async def get_by_email(self, email: str) -> UserModel | None:
-        logger.info("start step register UserRepository-get_by_email ")
         return self.db.query(UserModel).filter_by(email=email).first()
 
     async def get_by_username(self, username: str) -> UserModel | None:

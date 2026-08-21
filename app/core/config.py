@@ -15,6 +15,11 @@ class Settings(BaseSettings):
 
     TIMEZONE: str = "Asia/Tehran"
 
+    LOG_LEVEL: str = "INFO"
+    LOG_DIR: str = "logs"
+    LOG_ROTATION: str = "10 MB"
+    LOG_RETENTION: str = "14 days"
+
     model_config = SettingsConfigDict(env_file=".env")
 
 

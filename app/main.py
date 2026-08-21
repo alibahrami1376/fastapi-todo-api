@@ -37,8 +37,13 @@ app = FastAPI(
 # =========================
 # Middleware
 # =========================
-app.add_middleware(CorrelationIdLoggingMiddleware)
+# Last added = outermost. Desired request flow:
+#   CorrelationIdMiddleware
+#     → CorrelationIdLoggingMiddleware  (Loguru contextualize)
+#       → RequestLoggingMiddleware      (HTTP audit)
+#         → app
 app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(CorrelationIdLoggingMiddleware)
 app.add_middleware(CorrelationIdMiddleware)
 
 

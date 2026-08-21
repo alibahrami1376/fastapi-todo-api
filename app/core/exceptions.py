@@ -2,6 +2,9 @@ from fastapi import HTTPException, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from loguru import logger
+
+from core.logging.utils import resolve_correlation_id
 
 
 class BaseAppException(Exception):
@@ -52,6 +55,19 @@ class AuthenticationException(BaseAppException):
             message="Authentication failed",
             status_code=401,
         )
+
+
+def internal_error_response() -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "success": False,
+            "error": {
+                "code": "INTERNAL_SERVER_ERROR",
+                "message": "Internal server error",
+            },
+        },
+    )
 
 
 async def app_exception_handler(
@@ -137,16 +153,19 @@ async def unhandled_exception_handler(
     request: Request,
     exc: Exception,
 ):
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={
-            "success": False,
-            "error": {
-                "code": "INTERNAL_SERVER_ERROR",
-                "message": "Internal server error",
-            },
-        },
-    )
+    cid = resolve_correlation_id(request)
+
+    if not getattr(request.state, "exception_logged", False):
+        logger.bind(
+            correlation_id=cid,
+            event="unhandled_exception",
+            method=request.method,
+            path=request.url.path,
+            status=500,
+        ).exception("Unhandled exception")
+        request.state.exception_logged = True
+
+    return internal_error_response()
 
 
 # ------------------------

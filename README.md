@@ -1,12 +1,3 @@
-<!-- Language switcher -->
-<p align="right">
-  <a href="#persian-version">🇮🇷 فارسی</a> &nbsp;|&nbsp;
-  <a href="#english-version">🇬🇧 English</a>
-</p>
-
----
-
-<a name="english-version"></a>
 
 # FastAPI Todo API 
 
@@ -24,6 +15,7 @@ A production-ready REST API for managing personal todo tasks, built with **FastA
   - [Lint and Reformat](#lint-en)
 - [Project Structure](#structure-en)
 - [Architecture](#architecture-en)
+- [Logging](#logging-en)
 - [Planned Features](#Planned-Features)
 - [License](#license-en)
 
@@ -50,6 +42,7 @@ It is designed to demonstrate a real-world layered architecture with proper exce
 - **OpenAPI / Swagger** — every endpoint has `summary`, `description`, `response_model`, `status_code`, and examples
 - **Database Indexes** — `owner_id` and composite `(owner_id, is_completed)` for fast queries
 - **Alembic Migrations** — versioned schema evolution
+- **Structured Logging** — Loguru + correlation ID (`X-Request-ID`), HTTP audit, and service-level events in NDJSON
 - **Pytest Test Suite** — 32 tests with isolated test database and nested transactions
 
 ---
@@ -73,6 +66,7 @@ Key dependencies (see `requirements.txt` for the full list):
 - `passlib[bcrypt]`
 - `psycopg2-binary`
 - `python-dotenv`
+- `loguru`, `asgi-correlation-id`
 - `pytest`, `pytest-asyncio`
 
 ---
@@ -94,6 +88,10 @@ cp app/.env.example app/.env
 | `AUTH_ACCESS_TOKEN_EXPIRE_MINUTES` | | `10` | Access token lifetime |
 | `AUTH_REFRESH_TOKEN_EXPIRE_DAYS` | | `30` | Refresh token lifetime |
 | `TIMEZONE` | | `Asia/Tehran` | Used for `due_date` validation |
+| `LOG_LEVEL` | | `INFO` | Loguru level (`DEBUG`, `INFO`, …) |
+| `LOG_DIR` | | `logs` | Log directory (relative to `app/` unless absolute) |
+| `LOG_ROTATION` | | `10 MB` | File rotation size/interval |
+| `LOG_RETENTION` | | `14 days` | How long rotated files are kept |
 
 **Example `app/.env`:**
 
@@ -104,6 +102,11 @@ TEST_DATABASE_URL=postgresql+psycopg2://postgres:password@localhost:5432/todo_te
 AUTH_JWT_SECRET_KEY=your-very-long-random-secret
 AUTH_ACCESS_TOKEN_EXPIRE_MINUTES=10
 AUTH_REFRESH_TOKEN_EXPIRE_DAYS=30
+
+LOG_LEVEL=INFO
+LOG_DIR=logs
+LOG_ROTATION=10 MB
+LOG_RETENTION=14 days
 ```
 
 ---
@@ -256,7 +259,12 @@ fastapi-todo-api/
 │   │   ├── config.py               Pydantic settings (reads .env)
 │   │   ├── database.py             SQLAlchemy engine + session + get_db
 │   │   ├── exceptions.py           Custom exception classes + handlers
-│   │   └── security.py             JWT generate/decode + fingerprint hash
+│   │   ├── security.py             JWT generate/decode + fingerprint hash
+│   │   └── logging/                Loguru setup, filters, helpers
+│   │
+│   ├── middleware/
+│   │   ├── correlation.py          Bridge X-Request-ID → Loguru context
+│   │   └── logging.py              HTTP request/response audit
 │   │
 │   ├── dependencies/
 │   │   ├── auth.py                 get_current_user, get_auth_service
@@ -295,7 +303,8 @@ fastapi-todo-api/
 │
 ├── docs/
 │   ├── flows.md                    All application flows documented
-│   └── flow-session.md             Session lifecycle diagram
+│   ├── flow-session.md             Session lifecycle diagram
+│   └── logging-event-pattern.md    Logging flow & event structure
 │
 ├── tests/
 │   ├── conftest.py                 Test DB setup, fixtures, authenticated clients
@@ -347,346 +356,39 @@ All custom exceptions extend `BaseAppException` and are caught by `app_exception
 
 ---
 
+<a name="logging-en"></a>
+## Logging
+
+Structured logging with **Loguru** and **asgi-correlation-id**.
+
+**Request flow:**
+
+```text
+CorrelationIdMiddleware
+  → CorrelationIdLoggingMiddleware
+    → Service logs (optional business steps)
+      → RequestLoggingMiddleware (one HTTP audit per request)
+```
+
+| Piece | Role |
+|-------|------|
+| `X-Request-ID` / `correlation_id` | Joins all logs for one request |
+| Service layer | Short business events (`event`, `operation`, ids) |
+| Request logging middleware | One HTTP completed/failed audit (status, latency, masked headers on writes/errors) |
+| `app/logs/app.jsonl` | NDJSON file sink with rotation/retention |
+| stderr | Human-readable console (includes `cid=`) |
+
+On unhandled 500s the app logs **once** at middleware level and returns a JSON 500 **without re-raising**, so Uvicorn does not duplicate the traceback. The response still carries `X-Request-ID`.
+
+Details: [docs/logging-event-pattern.md](docs/logging-event-pattern.md).
+
+---
+
 <a name="Planned-Features"></a>
 ## Planned-Features
-- [x] Fingerprint روی توکن
-- [ ] Bulk complete: `PATCH /api/v1/todos/bulk-complete`
-- [ ] Bulk delete: `DELETE /api/v1/todos/bulk-delete`
-- [ ] Statistics: `GET /api/v1/todos/stats`
-- [ ] Docker + CI/CD
-- [ ] Rate limiting
-- [ ] Structured logging
-
----
-
-<a name="license-en"></a>
-## License
-
-This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
-
----
-
----
-
-<a name="persian-version"></a>
-
-# FastAPI Todo API 
-
-یک REST API آماده برای مدیریت وظایف شخصی، ساخته‌شده با **FastAPI**، **SQLAlchemy**، **PostgreSQL** و **JWT** بر پایه معماری لایه‌بندی‌شده.
-
-- [معرفی](#overview-fa)
-- [ویژگی‌ها](#features-fa)
-- [پیش‌نیازها](#requirements-fa)
-- [تنظیمات](#configuration-fa)
-- [نصب و راه‌اندازی](#installation-fa)
-- [نحوه استفاده](#usage-fa)
-  - [داده‌های آزمایشی](#seed-fa)
-  - [مستندات](#documentation-fa)
-  - [تست‌ها](#testing-fa)
-  - [لینت و فرمت کد](#lint-fa)
-- [ساختار پروژه](#structure-fa)
-- [معماری](#architecture-fa)
-- [ویژگی های  برنامه ریزی شده ](#Planned-Features)
-- [لایسنس](#license-fa)
-
----
-
-<a name="overview-fa"></a>
-## معرفی
-
-FastAPI Todo API یک سرویس بک‌اند است که به کاربران احراز هویت‌شده امکان ایجاد، مشاهده، به‌روزرسانی، حذف و جستجوی وظایف شخصی را می‌دهد.  
-این پروژه برای نمایش معماری لایه‌بندی‌شده واقعی با مدیریت خطای یکپارچه، مدیریت session با JWT و مجموعه‌ای کامل از تست‌ها طراحی شده است.
-
----
-
-<a name="features-fa"></a>
-## ویژگی‌ها
-
-- **احراز هویت JWT** — access token + refresh token با rotation خودکار
-- **Fingerprint در Refresh Token** — `SHA-256(IP + User-Agent)` درون JWT جاسازی می‌شود تا از سرقت token جلوگیری کند
-- **مدیریت Session** — هر ورود یک session ایجاد می‌کند؛ logout هر دو token را ابطال می‌کند
-- **CRUD کامل Todo** — ایجاد، لیست، دریافت تکی، به‌روزرسانی جزئی (PATCH)، جایگزینی کامل (PUT)، حذف نرم
-- **جستجو / فیلتر / مرتب‌سازی / صفحه‌بندی** — جستجو در عنوان و توضیحات، فیلتر وضعیت و اولویت و تاریخ
-- **Soft Delete** — تسک‌ها از دید کاربر پنهان می‌شوند اما از دیتابیس حذف نمی‌شوند
-- **سلسله‌مراتب خطا** — فرمت JSON یکسان برای تمام خطاها
-- **OpenAPI / Swagger** — هر endpoint دارای `summary`، `description`، `response_model` و مثال است
-- **Index دیتابیس** — روی `owner_id` و `(owner_id, is_completed)` برای کارایی بیشتر
-- **Alembic Migrations** — مدیریت تغییرات schema
-- **مجموعه تست Pytest** — 32 تست با دیتابیس مجزا و تراکنش‌های تودرتو
-
----
-
-<a name="requirements-fa"></a>
-## پیش‌نیازها
-
-| پیش‌نیاز | نسخه |
-|----------|------|
-| Python | 3.10+ |
-| PostgreSQL | 13+ |
-| pip | آخرین نسخه |
-
-وابستگی‌های اصلی (لیست کامل در `requirements.txt`):
-
-- `fastapi` 0.141+
-- `sqlalchemy` 2.0+
-- `alembic` 1.18+
-- `pydantic` 2.13+
-- `pyjwt` 2.13+
-- `passlib[bcrypt]`
-- `psycopg2-binary`
-- `python-dotenv`
-- `pytest`, `pytest-asyncio`
-
----
-
-<a name="configuration-fa"></a>
-## تنظیمات
-
-فایل نمونه را کپی کنید و مقادیر را پر کنید:
-
-```bash
-cp app/.env.example app/.env
-```
-
-| متغیر | اجباری | پیش‌فرض | توضیح |
-|-------|--------|---------|-------|
-| `DATABASE_URL` | ✅ | — | آدرس اتصال به PostgreSQL اصلی |
-| `TEST_DATABASE_URL` | ✅ | — | دیتابیس جداگانه برای pytest |
-| `AUTH_JWT_SECRET_KEY` | ✅ | `change me` | کلید امضای JWT — در production از یک رشته تصادفی طولانی استفاده کنید |
-| `AUTH_ACCESS_TOKEN_EXPIRE_MINUTES` | | `10` | مدت اعتبار access token |
-| `AUTH_REFRESH_TOKEN_EXPIRE_DAYS` | | `30` | مدت اعتبار refresh token |
-| `TIMEZONE` | | `Asia/Tehran` | برای اعتبارسنجی `due_date` |
-
-**نمونه `app/.env`:**
-
-```env
-DATABASE_URL=postgresql+psycopg2://postgres:password@localhost:5432/todo
-TEST_DATABASE_URL=postgresql+psycopg2://postgres:password@localhost:5432/todo_test
-
-AUTH_JWT_SECRET_KEY=your-very-long-random-secret
-AUTH_ACCESS_TOKEN_EXPIRE_MINUTES=10
-AUTH_REFRESH_TOKEN_EXPIRE_DAYS=30
-```
-
----
-
-<a name="installation-fa"></a>
-## نصب و راه‌اندازی
-
-```bash
-# ۱. دریافت پروژه
-git clone https://github.com/your-username/fastapi-todo-api.git
-cd fastapi-todo-api
-
-# ۲. ساخت و فعال‌سازی محیط مجازی
-python -m venv venv
-source venv/bin/activate        # ویندوز: venv\Scripts\activate
-
-# ۳. نصب وابستگی‌ها
-pip install -r requirements.txt
-
-# ۴. تنظیم متغیرهای محیطی
-cp app/.env.example app/.env
-# فایل app/.env را ویرایش کنید
-
-# ۵. ساخت دیتابیس‌ها در PostgreSQL
-psql -U postgres -c "CREATE DATABASE todo;"
-psql -U postgres -c "CREATE DATABASE todo_test;"
-
-# ۶. اجرای migration
-cd app
-TESTING=false alembic upgrade head
-
-# ۷. اجرای سرور توسعه
-cd ..
-uvicorn app.main:app --reload --app-dir app
-```
-
-API در آدرس `http://127.0.0.1:8000` در دسترس خواهد بود.
-
----
-
-<a name="usage-fa"></a>
-## نحوه استفاده
-
-### جریان اصلی
-
-```
-۱. POST /api/v1/auth/register   – ثبت‌نام
-۲. POST /api/v1/auth/login      – ورود و دریافت توکن‌ها
-۳. Authorization: Bearer <access_token> در همه درخواست‌های /todos و /users
-۴. POST /api/v1/auth/refresh    – تجدید توکن (User-Agent باید یکسان باشد)
-۵. POST /api/v1/auth/logout     – خروج و ابطال session
-```
-
-### endpoint های Todo
-
-```
-POST   /api/v1/todos            ایجاد تسک
-GET    /api/v1/todos            لیست تسک‌ها (جستجو/فیلتر/مرتب‌سازی/صفحه‌بندی)
-GET    /api/v1/todos/{id}       دریافت یک تسک
-PATCH  /api/v1/todos/{id}       به‌روزرسانی جزئی
-PUT    /api/v1/todos/{id}       جایگزینی کامل
-DELETE /api/v1/todos/{id}       حذف نرم
-```
-
-<a name="seed-fa"></a>
-### داده‌های آزمایشی
-
-```bash
-cd app
-python scripts/seed.py
-```
-
-با استفاده از `Faker` کاربران و تسک‌های ساختگی تولید می‌کند.
-
-<a name="documentation-fa"></a>
-### مستندات
-
-Swagger UI تعاملی:
-
-```
-http://127.0.0.1:8000/docs
-```
-
-نسخه ReDoc:
-
-```
-http://127.0.0.1:8000/redoc
-```
-
-<a name="testing-fa"></a>
-### تست‌ها
-
-مطمئن شوید `TEST_DATABASE_URL` در `app/.env` تنظیم شده، سپس:
-
-```bash
-# اعمال migration روی دیتابیس تست
-cd app && TESTING=true alembic upgrade head && cd ..
-
-# اجرای همه تست‌ها
-pytest
-
-# با جزئیات بیشتر
-pytest -v
-
-# فقط تست‌های auth
-pytest tests/test_auth.py -v
-```
-
-تمام 32 تست روی دیتابیس مجزا با تراکنش‌های تودرتو اجرا می‌شوند — هر تست به صورت خودکار rollback می‌شود.
-
-<a name="lint-fa"></a>
-### لینت و فرمت کد
-
-پروژه از **Ruff** استفاده می‌کند:
-
-```bash
-# بررسی خطاهای lint
-ruff check app/
-
-# رفع خودکار
-ruff check app/ --fix
-
-# فرمت‌بندی کد
-ruff format app/
-```
-
----
-
-<a name="structure-fa"></a>
-## ساختار پروژه
-
-```
-fastapi-todo-api/
-│
-├── app/
-│   ├── main.py                     نقطه ورود FastAPI + ثبت exception handler ها
-│   ├── .env                        متغیرهای محیطی (در git نادیده گرفته می‌شود)
-│   ├── .env.example                نمونه متغیرهای محیطی
-│   │
-│   ├── api/
-│   │   ├── routers.py              جمع‌آوری همه router های نسخه‌بندی‌شده
-│   │   └── v1/
-│   │       ├── openapi_examples.py مثال‌های Swagger به صورت متمرکز
-│   │       └── routes/
-│   │           ├── auth.py         register / login / refresh / logout
-│   │           ├── todos.py        CRUD + جستجو/فیلتر/مرتب‌سازی/صفحه‌بندی
-│   │           └── users.py        GET /me
-│   │
-│   ├── core/
-│   │   ├── config.py               تنظیمات Pydantic (خواندن از .env)
-│   │   ├── database.py             SQLAlchemy engine + session + get_db
-│   │   ├── exceptions.py           کلاس‌های استثنا + handler های سراسری
-│   │   └── security.py             تولید/decode JWT + ساخت fingerprint
-│   │
-│   ├── dependencies/               وابستگی‌های FastAPI (get_current_user و ...)
-│   ├── messages/                   ثابت‌های متنی پیام‌ها
-│   ├── migrations/                 فایل‌های Alembic
-│   ├── models/                     مدل‌های SQLAlchemy ORM
-│   ├── repositories/               لایه دسترسی به داده
-│   ├── schemas/                    اسکیماهای Pydantic
-│   ├── scripts/                    اسکریپت seed داده‌های آزمایشی
-│   └── services/                   منطق کسب‌وکار
-│
-├── docs/
-│   ├── flows.md                    مستند همه جریان‌های برنامه
-│   └── flow-session.md             نمودار چرخه حیات session
-│
-├── tests/
-│   ├── conftest.py                 راه‌اندازی دیتابیس تست و fixture ها
-│   ├── test_auth.py                تست‌های احراز هویت (17 تست)
-│   └── test_todos.py               تست‌های Todo (15 تست)
-│
-├── requirements.txt
-├── pyproject.toml                  تنظیمات Ruff و Pytest
-└── README.md
-```
-
----
-
-<a name="architecture-fa"></a>
-## معماری
-
-پروژه از **معماری لایه‌بندی‌شده** پیروی می‌کند:
-
-```
-درخواست HTTP
-  └─ Route (FastAPI)
-       └─ Service (منطق کسب‌وکار)
-            └─ Repository (دسترسی به داده)
-                 └─ SQLAlchemy ORM
-                      └─ PostgreSQL
-```
-
-| لایه | مسئولیت |
-|------|---------|
-| **Routes** | مدیریت HTTP، اعتبارسنجی ورودی، سریال‌سازی خروجی |
-| **Services** | قوانین کسب‌وکار، هماهنگی، تصمیم‌گیری در مورد خطا |
-| **Repositories** | تمام query های دیتابیس — بدون منطق کسب‌وکار |
-| **Models** | تعریف جداول ORM |
-| **Schemas** | اعتبارسنجی و سریال‌سازی Pydantic |
-
-**فرمت یکسان خطاها:**
-
-```json
-{
-  "success": false,
-  "error": {
-    "code": "TODO_NOT_FOUND",
-    "message": "Todo not found"
-  }
-}
-```
-
----
-
-<a name="known-issues-fa"></a>
-## ویژگی های  برنامه ریزی شده 
-
 - [x] Add Fingerprint 
-- [ ] Structured logging
-- [ ] Centralized Logging — مخصوصاً خطاهای 500
+- [x] Structured logging
+- [x] Centralized Logging — مخصوصاً خطاهای 500
 - [ ] Docker / Docker Compose
 - [ ] Redis
 - [ ] Rate Limiting
@@ -698,9 +400,10 @@ fastapi-todo-api/
 - [ ] Bulk complete: `PATCH /api/v1/todos/bulk-complete`
 - [ ] Bulk delete: `DELETE /api/v1/todos/bulk-delete`
 - [ ] Statistics: `GET /api/v1/todos/stats`
+
 ---
 
-<a name="license-fa"></a>
-## لایسنس
+<a name="license-en"></a>
+## License
 
-این پروژه تحت **مجوز MIT** منتشر شده است. فایل [LICENSE](LICENSE) را ببینید.
+This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.

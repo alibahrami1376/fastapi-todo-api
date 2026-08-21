@@ -2,6 +2,7 @@ from math import ceil
 
 from core.exceptions import PermissionDeniedException, TodoNotFoundException
 from fastapi import HTTPException, status
+from loguru import logger
 from messages import TaskMessages
 from repositories import TaskRepository
 from schemas import TaskCreateSchema, TaskQuerySchema, TaskUpdateSchema
@@ -18,15 +19,27 @@ class TaskService:
         task: TaskCreateSchema,
     ):
         try:
-            return await self.task_repo.create_task(
+            created = await self.task_repo.create_task(
                 title=task.title,
                 description=task.description,
                 priority=task.priority,
                 due_date=task.due_date,
                 owner_id=user_id,
             )
+            logger.bind(
+                event="task_created",
+                operation="tasks.create",
+                task_id=created.id,
+                user_id=user_id,
+            ).info("Task created")
+            return created
 
         except SQLAlchemyError:
+            logger.bind(
+                event="task_create_failed",
+                operation="tasks.create",
+                user_id=user_id,
+            ).exception("Task create failed")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=TaskMessages.TASK_CREATION_FAILED,
@@ -108,7 +121,14 @@ class TaskService:
             task.is_completed = data.is_completed
             task.due_date = data.due_date
 
-            return await self.task_repo.update_task(task)
+            updated = await self.task_repo.update_task(task)
+            logger.bind(
+                event="task_updated",
+                operation="tasks.update",
+                task_id=task_id,
+                user_id=user_id,
+            ).info("Task updated")
+            return updated
 
         except (
             TodoNotFoundException,
@@ -120,6 +140,12 @@ class TaskService:
             raise
 
         except SQLAlchemyError:
+            logger.bind(
+                event="task_update_failed",
+                operation="tasks.update",
+                task_id=task_id,
+                user_id=user_id,
+            ).exception("Task update failed")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=TaskMessages.TASK_FETCHING_FAILED,
@@ -145,7 +171,15 @@ class TaskService:
             for field, value in update_data.items():
                 setattr(task, field, value)
 
-            return await self.task_repo.update_task(task)
+            updated = await self.task_repo.update_task(task)
+            logger.bind(
+                event="task_updated",
+                operation="tasks.partial_update",
+                task_id=task_id,
+                user_id=user_id,
+                fields=list(update_data.keys()),
+            ).info("Task updated")
+            return updated
 
         except (
             TodoNotFoundException,
@@ -157,6 +191,12 @@ class TaskService:
             raise
 
         except SQLAlchemyError:
+            logger.bind(
+                event="task_update_failed",
+                operation="tasks.partial_update",
+                task_id=task_id,
+                user_id=user_id,
+            ).exception("Task update failed")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=TaskMessages.TASK_FETCHING_FAILED,
@@ -167,7 +207,6 @@ class TaskService:
         user_id: int,
         task_id: int,
     ):
-
         try:
             task = await self.task_repo.get_by_id(task_id)
 
@@ -178,6 +217,12 @@ class TaskService:
                 raise PermissionDeniedException()
 
             await self.task_repo.delete_task(task)
+            logger.bind(
+                event="task_deleted",
+                operation="tasks.delete",
+                task_id=task_id,
+                user_id=user_id,
+            ).info("Task deleted")
         except (
             TodoNotFoundException,
             PermissionDeniedException,
@@ -188,6 +233,12 @@ class TaskService:
             raise
 
         except SQLAlchemyError:
+            logger.bind(
+                event="task_delete_failed",
+                operation="tasks.delete",
+                task_id=task_id,
+                user_id=user_id,
+            ).exception("Task delete failed")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=TaskMessages.TASK_FETCHING_FAILED,
