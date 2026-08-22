@@ -8,6 +8,7 @@ A production-ready REST API for managing personal todo tasks, built with **FastA
 - [Requirements](#requirements-en)
 - [Configuration](#configuration-en)
 - [Installation](#installation-en)
+- [Command Reference](command.md) — copy-paste commands (local, Docker, Redis, tests)
 - [Usage](#usage-en)
   - [Seed fake data](#seed-en)
   - [Documentation](#documentation-en)
@@ -174,6 +175,8 @@ uv run uvicorn main:app --reload --app-dir app
 ```
 
 The API will be available at `http://127.0.0.1:8000`.
+
+> **All commands in one place:** [command.md](command.md) — setup, migrations, Docker, Redis, pytest, ruff, curl examples.
 
 Runtime-only install (no test/lint tools):
 
@@ -416,6 +419,7 @@ fastapi-todo-api/
 ├── .dockerignore
 ├── pyproject.toml                  Project deps + Ruff/Pytest config
 ├── uv.lock                         Locked dependency versions
+├── command.md                      Command reference (local, Docker, Redis, tests)
 └── README.md
 ```
 
@@ -581,6 +585,8 @@ export AUTH_JWT_SECRET_KEY='your-long-random-secret'
 ```
 
 ### Useful commands
+
+See [command.md](command.md) for the full list. Common ones:
 
 ```bash
 docker compose logs -f api
