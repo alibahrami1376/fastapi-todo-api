@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from api.routers import api_router
 from asgi_correlation_id import CorrelationIdMiddleware
 from core.exceptions import (
@@ -8,16 +10,30 @@ from core.exceptions import (
     validation_exception_handler,
 )
 from core.logging.config import setup_logging
+from core.redis import close_redis, init_redis
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from middleware.correlation import CorrelationIdLoggingMiddleware
 from middleware.logging import RequestLoggingMiddleware
+from middleware.rate_limit import RateLimitMiddleware
 
 # =========================
 # Logging
 # =========================
 
 setup_logging()
+
+
+# =========================
+# Lifespan
+# =========================
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_redis()
+    yield
+    await close_redis()
 
 
 # =========================
@@ -31,6 +47,7 @@ app = FastAPI(
         "search/filter/sort/pagination, and layered architecture."
     ),
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 
@@ -40,9 +57,11 @@ app = FastAPI(
 # Last added = outermost. Desired request flow:
 #   CorrelationIdMiddleware
 #     → CorrelationIdLoggingMiddleware  (Loguru contextualize)
-#       → RequestLoggingMiddleware      (HTTP audit)
-#         → app
+#       → RateLimitMiddleware           (Redis fixed-window)
+#         → RequestLoggingMiddleware    (HTTP audit)
+#           → app
 app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(RateLimitMiddleware)
 app.add_middleware(CorrelationIdLoggingMiddleware)
 app.add_middleware(CorrelationIdMiddleware)
 

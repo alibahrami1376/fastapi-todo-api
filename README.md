@@ -46,6 +46,7 @@ It is designed to demonstrate a real-world layered architecture with proper exce
 - **Database Indexes** — `owner_id` and composite `(owner_id, is_completed)` for fast queries
 - **Alembic Migrations** — versioned schema evolution
 - **Structured Logging** — Loguru + correlation ID (`X-Request-ID`), HTTP audit, and service-level events in NDJSON
+- **Rate Limiting** — Redis fixed-window limits per IP (global + stricter auth endpoints); `429` + `Retry-After`
 - **Pytest Test Suite** — 32 tests with isolated test database and nested transactions
 
 ---
@@ -57,6 +58,7 @@ It is designed to demonstrate a real-world layered architecture with proper exce
 |-------------|---------|
 | Python | 3.10+ |
 | PostgreSQL | 13+ |
+| Redis | 7+ (rate limiting) |
 | [uv](https://docs.astral.sh/uv/) | latest |
 
 Key dependencies (declared in `pyproject.toml`, locked in `uv.lock`):
@@ -68,6 +70,7 @@ Key dependencies (declared in `pyproject.toml`, locked in `uv.lock`):
 - `pyjwt` 2.13+
 - `passlib[bcrypt]`
 - `psycopg2-binary`
+- `redis` 8+
 - `python-dotenv`
 - `loguru`, `asgi-correlation-id`
 - Dev: `pytest`, `pytest-asyncio`, `ruff`, `pre-commit`, `faker`
@@ -87,6 +90,12 @@ cp app/.env.example app/.env
 |----------|----------|---------|-------------|
 | `DATABASE_URL` | ✅ | — | Main PostgreSQL connection string |
 | `TEST_DATABASE_URL` | ✅ | — | Separate DB used only during pytest |
+| `REDIS_URL` | | `redis://localhost:6379/0` | Redis connection URL (Compose uses `redis://redis:6379/0`) |
+| `RATE_LIMIT_ENABLED` | | `true` | Enable Redis-backed rate limiting |
+| `RATE_LIMIT_GLOBAL_REQUESTS` | | `100` | Max requests per IP per global window |
+| `RATE_LIMIT_GLOBAL_WINDOW_SECONDS` | | `60` | Global window size in seconds |
+| `RATE_LIMIT_AUTH_REQUESTS` | | `10` | Max login/register/refresh requests per IP per auth window |
+| `RATE_LIMIT_AUTH_WINDOW_SECONDS` | | `60` | Auth window size in seconds |
 | `AUTH_JWT_SECRET_KEY` | ✅ | `change me` | Secret for signing JWTs — use a long random string in production |
 | `AUTH_ACCESS_TOKEN_EXPIRE_MINUTES` | | `10` | Access token lifetime |
 | `AUTH_REFRESH_TOKEN_EXPIRE_DAYS` | | `30` | Refresh token lifetime |
@@ -101,10 +110,17 @@ cp app/.env.example app/.env
 ```env
 DATABASE_URL=postgresql+psycopg2://postgres:password@localhost:5432/todo
 TEST_DATABASE_URL=postgresql+psycopg2://postgres:password@localhost:5432/todo_test
+REDIS_URL=redis://localhost:6379/0
 
 AUTH_JWT_SECRET_KEY=your-very-long-random-secret
 AUTH_ACCESS_TOKEN_EXPIRE_MINUTES=10
 AUTH_REFRESH_TOKEN_EXPIRE_DAYS=30
+
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_GLOBAL_REQUESTS=100
+RATE_LIMIT_GLOBAL_WINDOW_SECONDS=60
+RATE_LIMIT_AUTH_REQUESTS=10
+RATE_LIMIT_AUTH_WINDOW_SECONDS=60
 
 LOG_LEVEL=INFO
 LOG_DIR=logs
@@ -322,12 +338,15 @@ fastapi-todo-api/
 │   │   ├── config.py               Pydantic settings (reads .env)
 │   │   ├── database.py             SQLAlchemy engine + session + get_db
 │   │   ├── exceptions.py           Custom exception classes + handlers
+│   │   ├── rate_limit.py           Redis fixed-window counter
+│   │   ├── redis.py                Async Redis client lifecycle
 │   │   ├── security.py             JWT generate/decode + fingerprint hash
 │   │   └── logging/                Loguru setup, filters, helpers
 │   │
 │   ├── middleware/
 │   │   ├── correlation.py          Bridge X-Request-ID → Loguru context
-│   │   └── logging.py              HTTP request/response audit
+│   │   ├── logging.py              HTTP request/response audit
+│   │   └── rate_limit.py           IP-based global + auth rate limits
 │   │
 │   ├── dependencies/
 │   │   ├── auth.py                 get_current_user, get_auth_service
@@ -376,7 +395,7 @@ fastapi-todo-api/
 │
 ├── .python-version                 Pinned Python version for uv
 ├── Dockerfile                      Multi-stage: development + production
-├── docker-compose.yml              Postgres + API (dev default, prod profile)
+├── docker-compose.yml              Postgres + Redis + API (dev default, prod profile)
 ├── .dockerignore
 ├── pyproject.toml                  Project deps + Ruff/Pytest config
 ├── uv.lock                         Locked dependency versions
@@ -464,6 +483,7 @@ docker compose up --build
 
 - API: `http://127.0.0.1:8000` (reload enabled, `./app` mounted)
 - Postgres: `localhost:5432` (`postgres` / `postgres` / db `todo`)
+- Redis: `localhost:6379` (`REDIS_URL=redis://redis:6379/0` inside Compose)
 - Migrations run automatically on container start (`RUN_MIGRATIONS=true`)
 
 ### Production image
@@ -472,8 +492,8 @@ docker compose up --build
 # Build only the production stage
 docker build --target production -t fastapi-todo-api:prod .
 
-# Or via Compose (starts db + api-prod; does not start the dev api)
-docker compose --profile prod up -d --build db api-prod
+# Or via Compose (starts db + redis + api-prod; does not start the dev api)
+docker compose --profile prod up -d --build db redis api-prod
 ```
 
 Set a real secret before production:
@@ -503,7 +523,7 @@ docker compose down
 - [x] Bulk delete: `DELETE /api/v1/todos/bulk-delete`
 - [x] Docker / Docker Compose  
 - [ ] Redis  
-- [ ] Rate Limiting
+- [x] Rate Limiting
 - [ ] Security Hardening
 - [ ] CI/CD
 - [ ] Deployment

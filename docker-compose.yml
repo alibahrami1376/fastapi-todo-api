@@ -17,6 +17,21 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    container_name: todo-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   # Development API (default)
   api:
     build:
@@ -30,6 +45,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/todo
       TEST_DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/todo_test
+      REDIS_URL: redis://redis:6379/0
       AUTH_JWT_SECRET_KEY: Zr7STfWeyvkSe+bJXYGlpQQ/mH3A1pKz0+oFsFDHCfU=  
       AUTH_ACCESS_TOKEN_EXPIRE_MINUTES: ${AUTH_ACCESS_TOKEN_EXPIRE_MINUTES:-10}
       AUTH_REFRESH_TOKEN_EXPIRE_DAYS: ${AUTH_REFRESH_TOKEN_EXPIRE_DAYS:-30}
@@ -38,12 +54,19 @@ services:
       LOG_DIR: logs
       LOG_ROTATION: ${LOG_ROTATION:-10 MB}
       LOG_RETENTION: ${LOG_RETENTION:-14 days}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      RATE_LIMIT_GLOBAL_REQUESTS: ${RATE_LIMIT_GLOBAL_REQUESTS:-100}
+      RATE_LIMIT_GLOBAL_WINDOW_SECONDS: ${RATE_LIMIT_GLOBAL_WINDOW_SECONDS:-60}
+      RATE_LIMIT_AUTH_REQUESTS: ${RATE_LIMIT_AUTH_REQUESTS:-10}
+      RATE_LIMIT_AUTH_WINDOW_SECONDS: ${RATE_LIMIT_AUTH_WINDOW_SECONDS:-60}
       RUN_MIGRATIONS: "true"
     volumes:
       - ./app:/app/app
       - api_logs:/app/app/logs
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   # Production API — enable with: docker compose --profile prod up -d --build
@@ -60,6 +83,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/todo
       TEST_DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/todo_test
+      REDIS_URL: redis://redis:6379/0
       AUTH_JWT_SECRET_KEY: ${AUTH_JWT_SECRET_KEY:-change-me-in-production}
       AUTH_ACCESS_TOKEN_EXPIRE_MINUTES: ${AUTH_ACCESS_TOKEN_EXPIRE_MINUTES:-10}
       AUTH_REFRESH_TOKEN_EXPIRE_DAYS: ${AUTH_REFRESH_TOKEN_EXPIRE_DAYS:-30}
@@ -68,13 +92,21 @@ services:
       LOG_DIR: logs
       LOG_ROTATION: ${LOG_ROTATION:-10 MB}
       LOG_RETENTION: ${LOG_RETENTION:-14 days}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      RATE_LIMIT_GLOBAL_REQUESTS: ${RATE_LIMIT_GLOBAL_REQUESTS:-100}
+      RATE_LIMIT_GLOBAL_WINDOW_SECONDS: ${RATE_LIMIT_GLOBAL_WINDOW_SECONDS:-60}
+      RATE_LIMIT_AUTH_REQUESTS: ${RATE_LIMIT_AUTH_REQUESTS:-10}
+      RATE_LIMIT_AUTH_WINDOW_SECONDS: ${RATE_LIMIT_AUTH_WINDOW_SECONDS:-60}
       RUN_MIGRATIONS: "true"
     volumes:
       - api_logs:/app/app/logs
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   postgres_data:
+  redis_data:
   api_logs:

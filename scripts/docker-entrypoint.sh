@@ -29,6 +29,32 @@ sys.exit(1)
 PY
 fi
 
+# Optional: wait for Redis when REDIS_URL is set
+if [ -n "${REDIS_URL:-}" ]; then
+  echo "Waiting for Redis..."
+  python - <<'PY'
+import os, sys, time
+from urllib.parse import urlparse
+
+url = os.environ.get("REDIS_URL", "")
+parsed = urlparse(url)
+host = parsed.hostname or "redis"
+port = parsed.port or 6379
+
+import socket
+deadline = time.time() + 60
+while time.time() < deadline:
+    try:
+        with socket.create_connection((host, port), timeout=2):
+            print(f"Redis is up at {host}:{port}")
+            sys.exit(0)
+    except OSError:
+        time.sleep(1)
+print(f"Timed out waiting for Redis at {host}:{port}", file=sys.stderr)
+sys.exit(1)
+PY
+fi
+
 # Run migrations unless explicitly skipped
 if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
   echo "Running alembic migrations..."

@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     TEST_DATABASE_URL: str
 
+    REDIS_URL: str = "redis://localhost:6379/0"
+
     AUTH_JWT_SECRET_KEY: str = "change me"
     AUTH_ACCESS_TOKEN_EXPIRE_MINUTES: int = 10
     AUTH_REFRESH_TOKEN_EXPIRE_DAYS: int = 30
@@ -24,6 +26,12 @@ class Settings(BaseSettings):
     LOG_DIR: str = "logs"
     LOG_ROTATION: str = "10 MB"
     LOG_RETENTION: str = "14 days"
+
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_GLOBAL_REQUESTS: int = 100
+    RATE_LIMIT_GLOBAL_WINDOW_SECONDS: int = 60
+    RATE_LIMIT_AUTH_REQUESTS: int = 10
+    RATE_LIMIT_AUTH_WINDOW_SECONDS: int = 60
 
     model_config = SettingsConfigDict(env_file=_ENV_FILE, env_file_encoding="utf-8")
 

@@ -57,6 +57,16 @@ class AuthenticationException(BaseAppException):
         )
 
 
+class RateLimitExceededException(BaseAppException):
+    def __init__(self, retry_after: int = 60):
+        self.retry_after = retry_after
+        super().__init__(
+            code="RATE_LIMIT_EXCEEDED",
+            message="Too many requests. Please try again later.",
+            status_code=429,
+        )
+
+
 def internal_error_response() -> JSONResponse:
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -74,6 +84,10 @@ async def app_exception_handler(
     request: Request,
     exc: BaseAppException,
 ):
+    headers = {}
+    if isinstance(exc, RateLimitExceededException):
+        headers["Retry-After"] = str(exc.retry_after)
+
     return JSONResponse(
         status_code=exc.status_code,
         content={
@@ -83,6 +97,7 @@ async def app_exception_handler(
                 "message": exc.message,
             },
         },
+        headers=headers,
     )
 
 
@@ -132,6 +147,7 @@ async def http_exception_handler(
         405: "METHOD_NOT_ALLOWED",
         409: "CONFLICT",
         422: "VALIDATION_ERROR",
+        429: "RATE_LIMIT_EXCEEDED",
     }
 
     return JSONResponse(
