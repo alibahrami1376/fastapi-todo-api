@@ -1,7 +1,7 @@
 from math import ceil
 
-from core.cache import cache_get, cache_set
-from core.cache_keys import todos_stats_key
+from core.cache import cache_delete, cache_delete_pattern, cache_get, cache_set
+from core.cache_keys import todos_detail_key, todos_list_pattern, todos_stats_key
 from core.config import settings
 from core.exceptions import PermissionDeniedException, TodoNotFoundException
 from fastapi import HTTPException, status
@@ -16,6 +16,18 @@ class TaskService:
     def __init__(self, task_repo: TaskRepository):
         self.task_repo = task_repo
 
+    async def _invalidate_todo_caches(
+        self,
+        user_id: int,
+        *,
+        todo_ids: list[int] | None = None,
+    ) -> None:
+        await cache_delete(todos_stats_key(user_id))
+        await cache_delete_pattern(todos_list_pattern(user_id))
+        if todo_ids:
+            for todo_id in todo_ids:
+                await cache_delete(todos_detail_key(user_id, todo_id))
+
     async def create_task(
         self,
         user_id: int,
@@ -29,6 +41,7 @@ class TaskService:
                 due_date=task.due_date,
                 owner_id=user_id,
             )
+            await self._invalidate_todo_caches(user_id, todo_ids=[created.id])
             logger.bind(
                 event="task_created",
                 operation="tasks.create",
@@ -163,6 +176,7 @@ class TaskService:
             task.due_date = data.due_date
 
             updated = await self.task_repo.update_task(task)
+            await self._invalidate_todo_caches(user_id, todo_ids=[task_id])
             logger.bind(
                 event="task_updated",
                 operation="tasks.update",
@@ -213,6 +227,7 @@ class TaskService:
                 setattr(task, field, value)
 
             updated = await self.task_repo.update_task(task)
+            await self._invalidate_todo_caches(user_id, todo_ids=[task_id])
             logger.bind(
                 event="task_updated",
                 operation="tasks.partial_update",
@@ -258,6 +273,7 @@ class TaskService:
                 raise PermissionDeniedException()
 
             await self.task_repo.delete_task(task)
+            await self._invalidate_todo_caches(user_id, todo_ids=[task_id])
             logger.bind(
                 event="task_deleted",
                 operation="tasks.delete",
@@ -313,6 +329,7 @@ class TaskService:
             tasks = await self._resolve_owned_tasks(user_id, task_ids)
             await self.task_repo.bulk_complete(tasks)
             updated_ids = [task.id for task in tasks]
+            await self._invalidate_todo_caches(user_id, todo_ids=updated_ids)
 
             logger.bind(
                 event="tasks_bulk_completed",
@@ -354,6 +371,7 @@ class TaskService:
             tasks = await self._resolve_owned_tasks(user_id, task_ids)
             deleted_ids = [task.id for task in tasks]
             await self.task_repo.bulk_soft_delete(tasks)
+            await self._invalidate_todo_caches(user_id, todo_ids=deleted_ids)
 
             logger.bind(
                 event="tasks_bulk_deleted",
