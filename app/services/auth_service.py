@@ -1,3 +1,5 @@
+from core.cache import cache_delete
+from core.cache_keys import auth_session_key
 from core.security import (
     decode_access_token,
     decode_refresh_token,
@@ -194,6 +196,8 @@ class AuthService:
 
         await self.session_repo.revoke_access_token(session)
         await self.session_repo.revoke_refresh_token(session)
+
+        await cache_delete(auth_session_key(access_jti))
 
         logger.bind(
             event="user_logged_out",
