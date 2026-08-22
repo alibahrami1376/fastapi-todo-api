@@ -1,5 +1,8 @@
 from math import ceil
 
+from core.cache import cache_get, cache_set
+from core.cache_keys import todos_stats_key
+from core.config import settings
 from core.exceptions import PermissionDeniedException, TodoNotFoundException
 from fastapi import HTTPException, status
 from loguru import logger
@@ -74,7 +77,21 @@ class TaskService:
 
     async def get_stats(self, user_id: int):
         try:
+            cache_key = todos_stats_key(user_id)
+            cached = await cache_get(cache_key)
+            if cached is not None:
+                logger.bind(
+                    event="tasks_stats_cache_hit",
+                    operation="tasks.stats",
+                    user_id=user_id,
+                ).info("Task stats served from cache")
+                return cached
             stats = await self.task_repo.get_stats(owner_id=user_id)
+            await cache_set(
+                cache_key,
+                stats,
+                ttl_seconds=settings.CACHE_STATS_TTL_SECONDS,
+            )
             logger.bind(
                 event="tasks_stats_fetched",
                 operation="tasks.stats",
@@ -85,7 +102,6 @@ class TaskService:
                 overdue=stats["overdue"],
             ).info("Task stats fetched")
             return stats
-
         except SQLAlchemyError:
             logger.bind(
                 event="tasks_stats_failed",
