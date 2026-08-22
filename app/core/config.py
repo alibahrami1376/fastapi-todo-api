@@ -33,6 +33,12 @@ class Settings(BaseSettings):
     RATE_LIMIT_AUTH_REQUESTS: int = 10
     RATE_LIMIT_AUTH_WINDOW_SECONDS: int = 60
 
+    CACHE_ENABLED: bool = True
+    CACHE_AUTH_TTL_SECONDS: int = 300  # 5 min
+    CACHE_STATS_TTL_SECONDS: int = 60  # 1 min
+    CACHE_LIST_TTL_SECONDS: int = 30  # 30 sec
+    CACHE_DETAIL_TTL_SECONDS: int = 60  # 1 min
+
     model_config = SettingsConfigDict(env_file=_ENV_FILE, env_file_encoding="utf-8")
 
 

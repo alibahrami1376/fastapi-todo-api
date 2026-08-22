@@ -521,9 +521,8 @@ docker compose down
 - [x] Statistics: `GET /api/v1/todos/stats`
 - [x] Bulk complete: `PATCH /api/v1/todos/bulk-complete`
 - [x] Bulk delete: `DELETE /api/v1/todos/bulk-delete`
-- [x] Docker / Docker Compose  
-- [ ] Redis  
-- [x] Rate Limiting
+- [x] Docker / Docker Compose    
+- [x] Rate Limiting(Redis)
 - [ ] Security Hardening
 - [ ] CI/CD
 - [ ] Deployment

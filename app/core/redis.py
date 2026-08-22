@@ -8,10 +8,11 @@ _redis: Redis | None = None
 
 async def init_redis() -> None:
     """Connect to Redis on app startup. Rate limiting is skipped if unavailable."""
+
     global _redis
 
-    if not settings.RATE_LIMIT_ENABLED:
-        logger.info("Rate limiting disabled; Redis client not started")
+    if not settings.RATE_LIMIT_ENABLED and not settings.CACHE_ENABLED:
+        logger.info("Redis not needed (rate limit + cache disabled)")
         return
 
     client = Redis.from_url(
@@ -19,6 +20,7 @@ async def init_redis() -> None:
         encoding="utf-8",
         decode_responses=True,
     )
+
     try:
         await client.ping()
     except Exception:  # noqa: BLE001
