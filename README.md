@@ -16,6 +16,7 @@ A production-ready REST API for managing personal todo tasks, built with **FastA
 - [Project Structure](#structure-en)
 - [Architecture](#architecture-en)
 - [Logging](#logging-en)
+- [Redis (Rate Limiting & Cache)](#redis-en)
 - [Deployment (Docker)](#deployment-en)
 - [Planned Features](#Planned-Features)
 - [License](#license-en)
@@ -47,6 +48,7 @@ It is designed to demonstrate a real-world layered architecture with proper exce
 - **Alembic Migrations** — versioned schema evolution
 - **Structured Logging** — Loguru + correlation ID (`X-Request-ID`), HTTP audit, and service-level events in NDJSON
 - **Rate Limiting** — Redis fixed-window limits per IP (global + stricter auth endpoints); `429` + `Retry-After`
+- **Redis Caching** — cache-aside for auth session/user lookup and `GET /todos/stats`; invalidates on todo mutations
 - **Pytest Test Suite** — 32 tests with isolated test database and nested transactions
 
 ---
@@ -58,7 +60,7 @@ It is designed to demonstrate a real-world layered architecture with proper exce
 |-------------|---------|
 | Python | 3.10+ |
 | PostgreSQL | 13+ |
-| Redis | 7+ (rate limiting) |
+| Redis | 7+ (rate limiting + cache) |
 | [uv](https://docs.astral.sh/uv/) | latest |
 
 Key dependencies (declared in `pyproject.toml`, locked in `uv.lock`):
@@ -96,6 +98,9 @@ cp app/.env.example app/.env
 | `RATE_LIMIT_GLOBAL_WINDOW_SECONDS` | | `60` | Global window size in seconds |
 | `RATE_LIMIT_AUTH_REQUESTS` | | `10` | Max login/register/refresh requests per IP per auth window |
 | `RATE_LIMIT_AUTH_WINDOW_SECONDS` | | `60` | Auth window size in seconds |
+| `CACHE_ENABLED` | | `true` | Enable Redis-backed response caching |
+| `CACHE_AUTH_TTL_SECONDS` | | `300` | TTL for auth session/user cache keys |
+| `CACHE_STATS_TTL_SECONDS` | | `60` | TTL for `GET /todos/stats` cache |
 | `AUTH_JWT_SECRET_KEY` | ✅ | `change me` | Secret for signing JWTs — use a long random string in production |
 | `AUTH_ACCESS_TOKEN_EXPIRE_MINUTES` | | `10` | Access token lifetime |
 | `AUTH_REFRESH_TOKEN_EXPIRE_DAYS` | | `30` | Refresh token lifetime |
@@ -121,6 +126,10 @@ RATE_LIMIT_GLOBAL_REQUESTS=100
 RATE_LIMIT_GLOBAL_WINDOW_SECONDS=60
 RATE_LIMIT_AUTH_REQUESTS=10
 RATE_LIMIT_AUTH_WINDOW_SECONDS=60
+
+CACHE_ENABLED=true
+CACHE_AUTH_TTL_SECONDS=300
+CACHE_STATS_TTL_SECONDS=60
 
 LOG_LEVEL=INFO
 LOG_DIR=logs
@@ -151,12 +160,16 @@ cp app/.env.example app/.env
 psql -U postgres -c "CREATE DATABASE todo;"
 psql -U postgres -c "CREATE DATABASE todo_test;"
 
-# 6. Run database migrations
+# 6. Start Redis (required for rate limiting + cache)
+# Example: docker run -d --name todo-redis -p 6379:6379 redis:7-alpine
+# Or use docker compose (see Deployment section)
+
+# 7. Run database migrations
 cd app
 TESTING=false uv run alembic upgrade head
 cd ..
 
-# 7. Start the development server
+# 8. Start the development server
 uv run uvicorn main:app --reload --app-dir app
 ```
 
@@ -296,6 +309,8 @@ uv run pytest tests/test_auth.py -v
 
 All 32 tests run against an isolated test database using nested transactions — each test rolls back automatically.
 
+Rate limiting and Redis cache are **disabled in tests** (`RATE_LIMIT_ENABLED=false`, `CACHE_ENABLED=false` in `tests/conftest.py`).
+
 <a name="lint-en"></a>
 ### Lint and Reformat
 
@@ -338,6 +353,8 @@ fastapi-todo-api/
 │   │   ├── config.py               Pydantic settings (reads .env)
 │   │   ├── database.py             SQLAlchemy engine + session + get_db
 │   │   ├── exceptions.py           Custom exception classes + handlers
+│   │   ├── cache.py                Redis cache-aside helpers (get/set/delete)
+│   │   ├── cache_keys.py           Cache key naming conventions
 │   │   ├── rate_limit.py           Redis fixed-window counter
 │   │   ├── redis.py                Async Redis client lifecycle
 │   │   ├── security.py             JWT generate/decode + fingerprint hash
@@ -411,11 +428,14 @@ The project follows a **layered architecture**:
 
 ```
 Request
-  └─ Route (FastAPI)
-       └─ Service (business logic)
-            └─ Repository (data access)
-                 └─ SQLAlchemy ORM
-                      └─ PostgreSQL
+  └─ Middleware (correlation → logging → rate limit)
+       └─ Route (FastAPI)
+            └─ Service (business logic + cache invalidation)
+                 └─ Repository (data access)
+                      └─ SQLAlchemy ORM
+                           └─ PostgreSQL
+
+Redis (shared): rate-limit counters + cache-aside keys
 ```
 
 | Layer | Responsibility |
@@ -452,8 +472,9 @@ Structured logging with **Loguru** and **asgi-correlation-id**.
 ```text
 CorrelationIdMiddleware
   → CorrelationIdLoggingMiddleware
-    → Service logs (optional business steps)
+    → RateLimitMiddleware
       → RequestLoggingMiddleware (one HTTP audit per request)
+        → Service logs (optional business steps)
 ```
 
 | Piece | Role |
@@ -467,6 +488,63 @@ CorrelationIdMiddleware
 On unhandled 500s the app logs **once** at middleware level and returns a JSON 500 **without re-raising**, so Uvicorn does not duplicate the traceback. The response still carries `X-Request-ID`.
 
 Details: [docs/logging-event-pattern.md](docs/logging-event-pattern.md).
+
+---
+
+<a name="redis-en"></a>
+## Redis (Rate Limiting & Cache)
+
+A single Redis instance (`REDIS_URL`) powers both rate limiting and application caching. The async client connects on app startup (`core/redis.py`) when either feature is enabled.
+
+### Rate limiting
+
+IP-based fixed-window limits via `RateLimitMiddleware`:
+
+| Scope | Default limit | Window | Applies to |
+|-------|---------------|--------|------------|
+| Global | 100 req/IP | 60 s | All API routes (except `/docs`, `/redoc`, `/openapi.json`) |
+| Auth | 10 req/IP | 60 s | `POST /auth/login`, `/register`, `/refresh` |
+
+On limit exceeded the API returns `429` with:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "RATE_LIMIT_EXCEEDED",
+    "message": "Too many requests. Please try again later."
+  }
+}
+```
+
+Response headers: `Retry-After`, `X-RateLimit-Limit`, `X-RateLimit-Remaining`.
+
+If Redis is unavailable, rate limiting **fails open** (request is allowed; error is logged).
+
+### Caching (cache-aside)
+
+| What | Key pattern | TTL | Invalidated when |
+|------|-------------|-----|------------------|
+| Auth session | `auth:session:{jti}` | 5 min | `POST /auth/logout` |
+| Auth user profile | `auth:user:{user_id}` | 5 min | TTL expiry |
+| Todo stats | `todos:stats:{user_id}` | 60 s | Any todo create/update/delete/bulk |
+
+**Cached paths:**
+
+- `get_current_user` — skips repeated session + user DB lookups on authenticated requests (also benefits `GET /users/me`)
+- `GET /api/v1/todos/stats` — skips aggregate SQL on cache hit
+
+**Not cached:** todo list/detail routes (simple or low hit-rate queries).
+
+Cache helpers live in `core/cache.py`. Values are JSON-serialized. If Redis is down or `CACHE_ENABLED=false`, reads fall through to the database.
+
+### Inspect Redis (Docker)
+
+```bash
+docker compose exec redis redis-cli KEYS "*"
+docker compose exec redis redis-cli GET "todos:stats:1"
+docker compose exec redis redis-cli TTL "auth:session:<jti>"
+```
 
 ---
 
@@ -521,20 +599,18 @@ docker compose down
 - [x] Statistics: `GET /api/v1/todos/stats`
 - [x] Bulk complete: `PATCH /api/v1/todos/bulk-complete`
 - [x] Bulk delete: `DELETE /api/v1/todos/bulk-delete`
-- [x] Docker / Docker Compose    
-- [x] Rate Limiting(Redis)
+- [x] Docker / Docker Compose  
+- [x] Redis (rate limiting + cache)
+- [x] Rate Limiting
+- [x] Auth cache in Redis (`get_current_user` + logout invalidation)
+- [x] Todo stats cache (`GET /todos/stats` + mutation invalidation)
 - [ ] Security Hardening
 - [ ] CI/CD
 - [ ] Deployment
 - [ ] Health Check / Monitoring
 - [ ] Documentation
-- [ ] create root: sen tasks by email(Celery) 
-- [ ] create tak-weekly by  aspcheduler  (backup and  delet in database )
-- [ ] chash in Redis برای session/auth lookup در get_current_user
-- [ ] cash  rout state  after crate route 
-- [ ] cash in todos realyy slow rout  
-
----
+- [ ] Send tasks by email (Celery)
+- [ ] Weekly scheduled tasks (backup / cleanup via APScheduler)
 
 <a name="license-en"></a>
 ## License

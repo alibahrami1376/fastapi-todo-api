@@ -20,8 +20,9 @@ if not TEST_DATABASE_URL:
     raise RuntimeError("TEST_DATABASE_URL is not configured in .env")
 
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
-# Avoid Redis/rate-limit coupling in the unit/integration suite
+# Avoid Redis/rate-limit/cache coupling in the unit/integration suite
 os.environ["RATE_LIMIT_ENABLED"] = "false"
+os.environ["CACHE_ENABLED"] = "false"
 
 from core.database import Base, get_db
 from main import app
